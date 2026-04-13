@@ -3,19 +3,17 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "Bob for Ads — Unified Meta Ads AI Agent Dashboard",
+  title: "Panic Product Builder — Find Panic Threads, Build & Sell Solution Guides",
   description:
-    "Create and manage Meta ad campaigns with AI-powered creative generation, automated deployment, and intelligent monitoring.",
+    "Execute the Panic Product Playbook: find Reddit panic threads, generate AI-powered solution guides, and sell them on Gumroad. Your complete dashboard for building $37 digital products.",
   keywords: [
-    "Bob for Ads",
-    "Meta Ads",
-    "AI Advertising",
-    "Campaign Management",
-    "Creative Generation",
+    "Panic Product Builder",
+    "Digital Products",
+    "Reddit Marketing",
+    "Gumroad",
+    "AI Content Generation",
+    "Passive Income",
   ],
-  icons: {
-    icon: "/bob-logo.svg",
-  },
 };
 
 export default function RootLayout({
