@@ -1,0 +1,494 @@
+import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { Options, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
+import { SessionManager } from './session-manager.js';
+import { nanoBananaMcpServer } from './nano-banana-mcp.js';
+import { ORCHESTRATOR_SYSTEM_PROMPT } from './orchestrator-prompt.js';
+import { resolve } from 'path';
+import { existsSync, readdirSync, readFileSync } from 'fs';
+
+/**
+ * AIClient - Wrapper for Claude SDK
+ * Handles all SDK configuration, streaming, and session management
+ * Based on proven patterns from Meta Ad Agent
+ */
+export class AIClient {
+  private defaultOptions: Partial<Options>;
+  private sessionManager: SessionManager;
+
+  constructor(sessionManager?: SessionManager) {
+    // Critical default configurations from your learnings
+    // Fix: Ensure cwd points to agent directory where .claude/ is located
+    const projectRoot = process.cwd().endsWith('/server')
+      ? resolve(process.cwd(), '..', 'agent')
+      : resolve(process.cwd(), 'agent');
+
+    this.defaultOptions = {
+      cwd: projectRoot, // Points to agent/ directory where .claude/agents/ is located
+      model: 'claude-opus-4-5-20251101',
+      maxTurns: 30, // CRITICAL for tool usage!
+      // Note: Output token limit is controlled by CLAUDE_CODE_MAX_OUTPUT_TOKENS environment variable
+      // Set to 16384 in .env for large campaign responses (SDK default: 8192)
+      settingSources: ['user', 'project'], // Load agents from .claude/agents/ and skills from .claude/skills/
+      // REMOVED: strictMcpConfig, permissionMode - these were interfering with MCP tool execution
+
+      // CRITICAL: Tool permissions for orchestration and subagents
+      // Main agent (orchestrator) only gets Task + coordination tools
+      // Subagents inherit ALL tools here and use what they need per their agent definition
+      allowedTools: [
+        // === ORCHESTRATOR TOOLS (Main agent uses these) ===
+        "Task",       // Launch specialized subagents - CORE ORCHESTRATION TOOL
+        "Skill",      // Enable skills - agents can consult specialized skills for guidance
+        "TodoWrite",  // Track workflow progress (optional but helpful for visibility)
+
+        // === SUBAGENT TOOLS (Only subagents use these via Task tool) ===
+        // brand-researcher uses:
+        "WebFetch",   // Web content fetching (2-3 targeted searches)
+        "Read",       // File reading
+
+        // culture-researcher uses:
+        "WebSearch",  // Web searching (12-15 cultural intelligence searches)
+        "Read",       // File reading
+        "Write",      // Save cultural intelligence report
+
+        // creative-director uses:
+        "Read",       // Read research files
+        "Write",      // Save campaign brief
+        "Glob",       // File pattern matching
+        "mcp__nano-banana__generate_ad_images",  // Gemini 2.5 Flash Image generation
+        // + Can consult skills: viral-meme-creation, nanobanana-meme-prompting
+
+        // === UTILITY TOOLS (Available if needed) ===
+        "Bash",       // Command execution (for subagents if needed)
+        "Edit",       // File editing (for refinements)
+        "Grep"        // Content search
+      ],
+
+      // Custom system prompt - PURE ORCHESTRATION ROLE
+      systemPrompt: ORCHESTRATOR_SYSTEM_PROMPT,
+      // MCP servers - nano_banana for image generation
+      mcpServers: {
+        "nano-banana": nanoBananaMcpServer
+      }
+      // Note: Removed hooks - observability is handled via message stream processing in sdk-server.ts
+    };
+
+    // Use provided session manager or create new one
+    this.sessionManager = sessionManager || new SessionManager();
+
+    // Log discovered agents and skills at initialization
+    this.logDiscoveredAgents(projectRoot);
+    this.logDiscoveredSkills(projectRoot);
+  }
+
+  /**
+   * Log discovered agents from the project's .claude/agents directory
+   */
+  private logDiscoveredAgents(projectRoot: string) {
+    const agentsDir = resolve(projectRoot, '.claude', 'agents');
+
+    console.log('\n🤖 Checking for Agents...');
+    console.log(`   Agents directory: ${agentsDir}`);
+
+    if (!existsSync(agentsDir)) {
+      console.log('   ⚠️  Agents directory not found');
+      return;
+    }
+
+    try {
+      const agentFiles = readdirSync(agentsDir)
+        .filter(file => file.endsWith('.md'));
+
+      if (agentFiles.length === 0) {
+        console.log('   ⚠️  No agent files found');
+        return;
+      }
+
+      console.log(`   ✅ Found ${agentFiles.length} agent(s):\n`);
+
+      for (const file of agentFiles) {
+        const agentPath = resolve(agentsDir, file);
+        const content = readFileSync(agentPath, 'utf-8');
+        const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+        if (frontmatterMatch) {
+          const frontmatter = frontmatterMatch[1];
+          const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+          const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+          const toolsMatch = frontmatter.match(/^tools:\s*(.+)$/m);
+
+          const name = nameMatch ? nameMatch[1].trim() : file.replace('.md', '');
+          const desc = descMatch ? descMatch[1].trim().substring(0, 60) + '...' : 'No description';
+          const tools = toolsMatch ? toolsMatch[1].trim() : 'No tools specified';
+
+          console.log(`   🤖 ${name}`);
+          console.log(`      Tools: ${tools}`);
+          console.log(`      Desc: ${desc}\n`);
+        }
+      }
+    } catch (error) {
+      console.error('   ❌ Error reading agents directory:', error);
+    }
+  }
+
+  /**
+   * Log discovered skills from the project's .claude/skills directory
+   */
+  private logDiscoveredSkills(projectRoot: string) {
+    const skillsDir = resolve(projectRoot, '.claude', 'skills');
+
+    console.log('\n📚 Checking for Skills...');
+    console.log(`   Skills directory: ${skillsDir}`);
+
+    if (!existsSync(skillsDir)) {
+      console.log('   ⚠️  Skills directory not found');
+      return;
+    }
+
+    try {
+      const skillFolders = readdirSync(skillsDir, { withFileTypes: true })
+        .filter(dirent => dirent.isDirectory())
+        .map(dirent => dirent.name);
+
+      if (skillFolders.length === 0) {
+        console.log('   ⚠️  No skill folders found');
+        return;
+      }
+
+      console.log(`   ✅ Found ${skillFolders.length} skill(s):\n`);
+
+      for (const folder of skillFolders) {
+        const skillPath = resolve(skillsDir, folder, 'SKILL.md');
+
+        if (existsSync(skillPath)) {
+          // Read frontmatter to get skill name and description
+          const content = readFileSync(skillPath, 'utf-8');
+          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+          if (frontmatterMatch) {
+            const frontmatter = frontmatterMatch[1];
+            const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+            const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+
+            const name = nameMatch ? nameMatch[1].trim() : folder;
+            const desc = descMatch ? descMatch[1].trim().substring(0, 80) + '...' : 'No description';
+
+            console.log(`   📘 ${name}`);
+            console.log(`      Path: ${skillPath}`);
+            console.log(`      Desc: ${desc}\n`);
+          } else {
+            console.log(`   ⚠️  ${folder}: Missing frontmatter in SKILL.md`);
+          }
+        } else {
+          console.log(`   ⚠️  ${folder}: Missing SKILL.md file`);
+        }
+      }
+    } catch (error) {
+      console.error('   ❌ Error reading skills directory:', error);
+    }
+  }
+
+  /**
+   * Create async generator for SDK prompt (required for MCP servers and advanced features)
+   *
+   * CRITICAL: For MCP tools with long execution times (like Gemini API calls), the generator
+   * must stay alive during tool execution. If the generator closes before the tool completes,
+   * the SDK will throw "Tool permission stream closed before response received".
+   *
+   * @param promptText - The user prompt text
+   * @param attachments - Optional attachments (images, etc.)
+   * @param signal - Optional abort signal to close the generator
+   */
+  private async *createPromptGenerator(
+    promptText: string,
+    attachments?: Array<{ type: string; source: any }>,
+    signal?: AbortSignal
+  ) {
+    const content = attachments && attachments.length > 0
+      ? [{ type: "text", text: promptText }, ...attachments]
+      : promptText;
+
+    yield {
+      type: "user" as const,
+      message: {
+        role: "user" as const,
+        content
+      },
+      parent_tool_use_id: null
+    } as any; // Type assertion - SDK will handle session_id and uuid
+
+    // CRITICAL FIX for MCP tools with long execution times:
+    // Keep the generator alive while tools are executing. The SDK needs this stream
+    // to remain open during MCP tool calls. Without this, long-running tools (>1s)
+    // will fail with "Tool permission stream closed before response received" error.
+    //
+    // The SDK will naturally break out of this loop when the query completes.
+    // The abort signal provides a way to explicitly close the generator if needed.
+    if (signal) {
+      await new Promise<void>((resolve) => {
+        signal.addEventListener('abort', () => resolve());
+      });
+    } else {
+      // Fallback: keep alive indefinitely (SDK will close when query completes)
+      await new Promise<void>(() => {
+        // Never resolves - SDK closes the generator when done
+      });
+    }
+  }
+
+  /**
+   * Stream query to Claude SDK using async generators (required for MCP servers)
+   * @param prompt - The user prompt to send
+   * @param options - Additional options to override defaults
+   * @param attachments - Optional attachments for multi-modal messages
+   */
+  async *queryStream(
+    prompt: string,
+    options: Partial<Options> = {},
+    attachments?: Array<{ type: string; source: any }>
+  ) {
+    // Create abort controller for generator lifecycle management
+    const abortController = new AbortController();
+
+    const queryOptions = {
+      ...this.defaultOptions,
+      ...options,
+      abortController  // Pass to SDK for proper cleanup
+    };
+
+    console.log('🚀 Starting SDK query with options:', {
+      cwd: queryOptions.cwd,
+      model: queryOptions.model,
+      maxTurns: queryOptions.maxTurns,
+      settingSources: queryOptions.settingSources,
+      mcpServers: Object.keys(queryOptions.mcpServers || {}),
+      skillsEnabled: queryOptions.allowedTools?.includes('Skill')
+    });
+
+    try {
+      // Stream messages from SDK using async generator (required for MCP servers)
+      // Generator will stay alive during tool execution (critical for MCP tools)
+      const promptGenerator = this.createPromptGenerator(
+        prompt,
+        attachments,
+        abortController.signal
+      );
+
+      for await (const message of query({ prompt: promptGenerator, options: queryOptions })) {
+        yield message;
+      }
+
+      // Clean up: abort the generator when query completes
+      abortController.abort();
+    } catch (error) {
+      abortController.abort();
+      console.error('❌ SDK query error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Single message query (non-streaming)
+   * Useful for testing and simple queries
+   */
+  async querySingle(prompt: string, options: Partial<Options> = {}) {
+    const messages = [];
+
+    for await (const message of this.queryStream(prompt, options)) {
+      messages.push(message);
+    }
+
+    return messages;
+  }
+
+  /**
+   * Add MCP server to the client
+   * This will be used to add nano_banana later
+   */
+  addMcpServer(name: string, server: any) {
+    if (!this.defaultOptions.mcpServers) {
+      this.defaultOptions.mcpServers = {};
+    }
+    this.defaultOptions.mcpServers[name] = server;
+    console.log(`✅ Added MCP server: ${name}`);
+  }
+
+  /**
+   * Session-aware query with automatic session management
+   * @param prompt - The user prompt
+   * @param sessionId - Optional session ID to resume
+   * @param metadata - Optional session metadata
+   * @param attachments - Optional attachments for multi-modal messages
+   */
+  async *queryWithSession(
+    prompt: string,
+    sessionId?: string,
+    metadata?: any,
+    attachments?: Array<{ type: string; source: any }>
+  ) {
+    // Get or create session
+    const session = await this.sessionManager.getOrCreateSession(sessionId, metadata);
+
+    // Get resume options if session has SDK session ID
+    const resumeOptions = this.sessionManager.getResumeOptions(session.id);
+
+    // Create abort controller for generator lifecycle management
+    const abortController = new AbortController();
+
+    const queryOptions = {
+      ...this.defaultOptions,
+      ...resumeOptions,
+      abortController  // Pass to SDK for proper cleanup
+    };
+
+    console.log(`🔄 Query with session ${session.id}`, {
+      hasResume: !!resumeOptions.resume,
+      turnCount: session.turnCount
+    });
+
+    let sdkSessionIdCaptured = false;
+
+    try {
+      // Use async generator for session-aware queries (required for MCP servers)
+      // Generator will stay alive during tool execution (critical for MCP tools)
+      const promptGenerator = this.createPromptGenerator(
+        prompt,
+        attachments,
+        abortController.signal
+      );
+
+      for await (const message of query({ prompt: promptGenerator, options: queryOptions })) {
+        // Capture SDK session ID from init message
+        if (message.type === 'system' && message.subtype === 'init' && message.session_id && !sdkSessionIdCaptured) {
+          await this.sessionManager.updateSdkSessionId(session.id, message.session_id);
+          sdkSessionIdCaptured = true;
+        }
+
+        // Add message to session history
+        await this.sessionManager.addMessage(session.id, message);
+
+        // Return both message and session info
+        yield { message, sessionId: session.id };
+      }
+
+      // Clean up: abort the generator when query completes
+      abortController.abort();
+
+      // Mark session as completed if it was a one-shot query
+      if (metadata?.oneShot) {
+        await this.sessionManager.completeSession(session.id);
+      }
+    } catch (error) {
+      abortController.abort();
+      console.error(`❌ Query error for session ${session.id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get session manager
+   */
+  getSessionManager(): SessionManager {
+    return this.sessionManager;
+  }
+
+  /**
+   * Get current configuration
+   */
+  getConfig() {
+    return { ...this.defaultOptions };
+  }
+
+  /**
+   * Fork a session to explore different creative directions
+   * This creates a branch from an existing session without affecting the original
+   *
+   * @param prompt - New prompt for the forked session
+   * @param baseSessionId - The session to fork from
+   * @param metadata - Optional metadata for the new forked session
+   * @param attachments - Optional attachments for multi-modal messages
+   *
+   * Use case: Try different creative angles while preserving original research
+   * Example:
+   *   - Original: Problem-solution angle campaign
+   *   - Fork 1: Emotional angle variant
+   *   - Fork 2: Social proof angle variant
+   */
+  async *queryWithSessionFork(
+    prompt: string,
+    baseSessionId: string,
+    metadata?: any,
+    attachments?: Array<{ type: string; source: any }>
+  ) {
+    // Get the base session to extract SDK session ID
+    const baseSession = await this.sessionManager.getOrCreateSession(baseSessionId);
+
+    if (!baseSession.sdkSessionId) {
+      throw new Error(`Cannot fork session ${baseSessionId}: No SDK session ID found. Session may not be initialized yet.`);
+    }
+
+    // Create a new session for the fork
+    const forkMetadata = {
+      ...metadata,
+      forkedFrom: baseSessionId,
+      forkTimestamp: new Date().toISOString()
+    };
+    const forkSession = await this.sessionManager.createSession(forkMetadata);
+
+    console.log(`🌿 Forking session ${baseSessionId} -> ${forkSession.id}`);
+
+    // Create abort controller for generator lifecycle management
+    const abortController = new AbortController();
+
+    // Build query options with forkSession flag
+    const queryOptions = {
+      ...this.defaultOptions,
+      resume: baseSession.sdkSessionId,  // Resume from base session
+      forkSession: true,  // Create a branch
+      abortController  // Pass to SDK for proper cleanup
+    };
+
+    let sdkSessionIdCaptured = false;
+
+    try {
+      // Use async generator for forked session
+      // Generator will stay alive during tool execution (critical for MCP tools)
+      const promptGenerator = this.createPromptGenerator(
+        prompt,
+        attachments,
+        abortController.signal
+      );
+
+      for await (const message of query({ prompt: promptGenerator, options: queryOptions })) {
+        // Capture SDK session ID for the forked session
+        if (message.type === 'system' && message.subtype === 'init' && message.session_id && !sdkSessionIdCaptured) {
+          await this.sessionManager.updateSdkSessionId(forkSession.id, message.session_id);
+          sdkSessionIdCaptured = true;
+          console.log(`🌿 Fork created with SDK session: ${message.session_id}`);
+        }
+
+        // Add message to forked session history
+        await this.sessionManager.addMessage(forkSession.id, message);
+
+        // Return both message and the forked session ID
+        yield {
+          message,
+          sessionId: forkSession.id,
+          baseSessionId: baseSessionId,
+          isFork: true
+        };
+      }
+
+      // Clean up: abort the generator when query completes
+      abortController.abort();
+
+      console.log(`✅ Fork completed: ${forkSession.id}`);
+    } catch (error) {
+      abortController.abort();
+      console.error(`❌ Fork error for session ${forkSession.id}:`, error);
+      throw error;
+    }
+  }
+}
+
+// Export singleton instance with default session manager
+export const aiClient = new AIClient();
