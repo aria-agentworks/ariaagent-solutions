@@ -3,7 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ─── Panic Product Builder — Dark Design System ──────────────────────── */
+/* ─── Bob for Ads — Dark Industrial Design System ────────────────────── */
 
 @font-face {
   font-family: 'Space Mono';
@@ -21,12 +21,21 @@
   src: url('https://fonts.gstatic.com/s/spacemono/v13/i7dMIFZifjKcF5UAWdDRYERE_FsG.woff2') format('woff2');
 }
 
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/instrumentserif/v5/qFdN35bXw7dKMsFg4PnRVAM.woff2') format('woff2');
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-space-mono: 'Space Mono', ui-monospace, monospace;
+  --font-instrument-serif: 'Instrument Serif', Georgia, serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -61,17 +70,24 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 
-  /* Custom Colors */
+  /* Bob Custom Colors */
   --color-void: #0a0a0a;
   --color-surface: #141414;
   --color-surface-raised: #1a1a1a;
   --color-border-dim: #2a2a2a;
   --color-border-bright: #3a3a3a;
-  --color-text-primary: #e5e5e5;
-  --color-text-secondary: #999999;
-  --color-text-muted: #666666;
-  --color-accent-emerald: #10b981;
-  --color-accent-amber: #f59e0b;
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #888888;
+  --color-text-muted: #555555;
+  --color-accent-coral: #ff6b4a;
+  --color-accent-coral-dim: #cc5038;
+  --color-accent-coral-glow: rgba(255, 107, 74, 0.15);
+  --color-status-success: #4ade80;
+  --color-status-error: #ef4444;
+  --color-status-warning: #fbbf24;
+  --color-terminal-green: #39ff14;
+  --color-terminal-amber: #ffb000;
+  --color-terminal-red: #ff4444;
 }
 
 /* ─── Force dark theme only — no light mode ──────────────────────────── */
@@ -79,36 +95,36 @@
 :root {
   --radius: 0.625rem;
   --background: #0a0a0a;
-  --foreground: #e5e5e5;
+  --foreground: #fafafa;
   --card: #141414;
-  --card-foreground: #e5e5e5;
+  --card-foreground: #fafafa;
   --popover: #1a1a1a;
-  --popover-foreground: #e5e5e5;
-  --primary: #10b981;
+  --popover-foreground: #fafafa;
+  --primary: #ff6b4a;
   --primary-foreground: #ffffff;
   --secondary: #1a1a1a;
-  --secondary-foreground: #e5e5e5;
+  --secondary-foreground: #fafafa;
   --muted: #1a1a1a;
-  --muted-foreground: #999999;
-  --accent: rgba(16, 185, 129, 0.15);
-  --accent-foreground: #10b981;
+  --muted-foreground: #888888;
+  --accent: rgba(255, 107, 74, 0.15);
+  --accent-foreground: #ff6b4a;
   --destructive: #ef4444;
   --border: #2a2a2a;
   --input: #2a2a2a;
-  --ring: #10b981;
-  --chart-1: #10b981;
-  --chart-2: #f59e0b;
-  --chart-3: #ef4444;
+  --ring: #ff6b4a;
+  --chart-1: #ff6b4a;
+  --chart-2: #4ade80;
+  --chart-3: #fbbf24;
   --chart-4: #a78bfa;
   --chart-5: #38bdf8;
   --sidebar: #0a0a0a;
-  --sidebar-foreground: #e5e5e5;
-  --sidebar-primary: #10b981;
+  --sidebar-foreground: #fafafa;
+  --sidebar-primary: #ff6b4a;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(16, 185, 129, 0.15);
-  --sidebar-accent-foreground: #10b981;
+  --sidebar-accent: rgba(255, 107, 74, 0.15);
+  --sidebar-accent-foreground: #ff6b4a;
   --sidebar-border: #2a2a2a;
-  --sidebar-ring: #10b981;
+  --sidebar-ring: #ff6b4a;
 }
 
 /* ─── Base Layer ──────────────────────────────────────────────────────── */
@@ -118,7 +134,8 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-[#0a0a0a] text-[#e5e5e5];
+    @apply bg-[#0a0a0a] text-[#fafafa];
+    font-family: 'Space Mono', ui-monospace, monospace;
   }
 }
 
@@ -139,21 +156,56 @@
   background: #3a3a3a;
 }
 
-/* ─── Glow Effects ───────────────────────────────────────────────────── */
+/* ─── Terminal Scanline Effect ───────────────────────────────────────── */
 
-.glow-emerald {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.2), 0 0 40px rgba(16, 185, 129, 0.1);
+.terminal-scanlines {
+  position: relative;
+  overflow: hidden;
+}
+.terminal-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.05) 2px,
+    rgba(0, 0, 0, 0.05) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
 }
 
-.glow-amber {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.2), 0 0 40px rgba(245, 158, 11, 0.1);
+/* ─── Glow Effects ───────────────────────────────────────────────────── */
+
+.glow-coral {
+  box-shadow: 0 0 20px rgba(255, 107, 74, 0.2), 0 0 40px rgba(255, 107, 74, 0.1);
+}
+
+.glow-coral-strong {
+  box-shadow: 0 0 20px rgba(255, 107, 74, 0.4), 0 0 60px rgba(255, 107, 74, 0.2);
+}
+
+.glow-green {
+  box-shadow: 0 0 20px rgba(74, 222, 128, 0.2), 0 0 40px rgba(74, 222, 128, 0.1);
 }
 
 .glow-red {
   box-shadow: 0 0 20px rgba(239, 68, 68, 0.2), 0 0 40px rgba(239, 68, 68, 0.1);
 }
 
-/* ─── Animations ─────────────────────────────────────────────────────── */
+/* ─── Pulse Animations ───────────────────────────────────────────────── */
+
+@keyframes pulse-coral {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
 
 @keyframes slide-up {
   from { opacity: 0; transform: translateY(12px); }
@@ -165,12 +217,30 @@
   to { opacity: 1; }
 }
 
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent; }
+  50% { border-color: #ff6b4a; }
+}
+
 .animate-slide-up {
   animation: slide-up 0.4s ease-out forwards;
 }
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out forwards;
+}
+
+.animate-pulse-coral {
+  animation: pulse-coral 2s ease-in-out infinite;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
 }
 
 /* ─── Card Hover Effect ──────────────────────────────────────────────── */
@@ -181,7 +251,7 @@
 }
 .card-hover:hover {
   border-color: #3a3a3a;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.08);
+  box-shadow: 0 0 20px rgba(255, 107, 74, 0.08);
   transform: translateY(-2px);
 }
 
@@ -194,25 +264,125 @@
 .stagger-5 { animation-delay: 0.25s; }
 .stagger-6 { animation-delay: 0.3s; }
 
-/* ─── Override shadcn defaults for dark theme ────────────────────────── */
+/* ─── Concept Card Selection ─────────────────────────────────────────── */
+
+.concept-card {
+  transition: all 0.25s ease;
+  border: 2px solid #2a2a2a;
+  cursor: pointer;
+}
+.concept-card:hover {
+  border-color: #3a3a3a;
+}
+.concept-card.selected {
+  border-color: #ff6b4a;
+  box-shadow: 0 0 0 1px #ff6b4a, 0 0 20px rgba(255, 107, 74, 0.15);
+}
+
+/* ─── Metric Card ────────────────────────────────────────────────────── */
+
+.metric-card {
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+.metric-card:hover {
+  border-color: #3a3a3a;
+}
+
+/* ─── Alert Card ─────────────────────────────────────────────────────── */
+
+.alert-card-bleeder {
+  border-left: 3px solid #ef4444;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, #141414 100%);
+}
+
+.alert-card-winner {
+  border-left: 3px solid #4ade80;
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.05) 0%, #141414 100%);
+}
+
+.alert-card-fatigue {
+  border-left: 3px solid #fbbf24;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.05) 0%, #141414 100%);
+}
+
+/* ─── Slack-style Button ─────────────────────────────────────────────── */
+
+.slack-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Space Mono', monospace;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+.slack-btn-approve {
+  background: #4ade80;
+  color: #0a0a0a;
+}
+.slack-btn-approve:hover {
+  background: #22c55e;
+}
+.slack-btn-reject {
+  background: #ef4444;
+  color: #ffffff;
+}
+.slack-btn-reject:hover {
+  background: #dc2626;
+}
+.slack-btn-scale {
+  background: #ff6b4a;
+  color: #ffffff;
+}
+.slack-btn-scale:hover {
+  background: #cc5038;
+}
+.slack-btn-pause {
+  background: #2a2a2a;
+  color: #fafafa;
+  border: 1px solid #3a3a3a;
+}
+.slack-btn-pause:hover {
+  background: #3a3a3a;
+}
+
+/* ─── Pipeline Step Connector ────────────────────────────────────────── */
+
+.pipeline-connector {
+  height: 2px;
+  flex: 1;
+  background: #2a2a2a;
+  position: relative;
+}
+.pipeline-connector.active {
+  background: linear-gradient(90deg, #ff6b4a, rgba(255, 107, 74, 0.3));
+}
+
+/* ─── Override shadcn defaults for dark industrial ────────────────────── */
 
 .dark {
   --background: #0a0a0a;
-  --foreground: #e5e5e5;
+  --foreground: #fafafa;
   --card: #141414;
-  --card-foreground: #e5e5e5;
+  --card-foreground: #fafafa;
   --popover: #1a1a1a;
-  --popover-foreground: #e5e5e5;
-  --primary: #10b981;
+  --popover-foreground: #fafafa;
+  --primary: #ff6b4a;
   --primary-foreground: #ffffff;
   --secondary: #1a1a1a;
-  --secondary-foreground: #e5e5e5;
+  --secondary-foreground: #fafafa;
   --muted: #1a1a1a;
-  --muted-foreground: #999999;
-  --accent: rgba(16, 185, 129, 0.15);
-  --accent-foreground: #10b981;
+  --muted-foreground: #888888;
+  --accent: rgba(255, 107, 74, 0.15);
+  --accent-foreground: #ff6b4a;
   --destructive: #ef4444;
   --border: #2a2a2a;
   --input: #2a2a2a;
-  --ring: #10b981;
+  --ring: #ff6b4a;
 }
