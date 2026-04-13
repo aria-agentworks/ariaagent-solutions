@@ -2,22 +2,13 @@ export interface RedditThread {
   id: string;
   title: string;
   subreddit: string;
-  author: string;
   upvotes: number;
-  comments: number;
+  commentCount: number;
+  panicScore: number;
   niche: string;
-  panicScore: number; // 0-100
-  snippet: string;
-  topComments: ThreadComment[];
-  createdAt: string;
-}
-
-export interface ThreadComment {
-  id: string;
-  author: string;
-  text: string;
-  upvotes: number;
-  isOP: boolean;
+  summary: string;
+  topComments: { author: string; text: string; upvotes: number }[];
+  selected?: boolean;
 }
 
 export interface Product {
@@ -27,29 +18,19 @@ export interface Product {
   price: number;
   status: 'draft' | 'listed' | 'live';
   revenue: number;
-  sales: number;
-  sourceThreadId?: string;
-  sourceSubreddit?: string;
+  salesCount: number;
+  buildTime: string;
   createdAt: string;
-  thumbnail?: string;
-}
-
-export interface GuideSection {
-  title: string;
-  content: string;
-  tips: string[];
+  platform: string;
 }
 
 export interface GeneratedGuide {
-  id: string;
-  productId?: string;
-  threadId: string;
   title: string;
-  targetAudience: string;
-  sections: GuideSection[];
+  niche: string;
+  sections: { title: string; content: string; subsections?: { title: string; content: string }[] }[];
   wordCount: number;
-  status: 'generating' | 'verifying' | 'formatted' | 'ready';
-  createdAt: string;
+  status: 'idle' | 'generating' | 'verifying' | 'formatted' | 'ready';
+  generatedAt: string;
 }
 
 export interface DashboardStats {
@@ -57,30 +38,22 @@ export interface DashboardStats {
   monthlyRevenue: number;
   activePages: number;
   avgBuildTime: string;
+  totalRevenue: number;
   totalSales: number;
-  revenueGrowth: number; // percentage
-  topNiche: string;
-}
-
-export interface RevenueDataPoint {
-  month: string;
-  revenue: number;
-}
-
-export interface ProductRevenue {
-  productId: string;
-  productTitle: string;
-  revenue: number;
-  sales: number;
+  revenueGrowth: number;
 }
 
 export interface ContentPost {
   id: string;
-  platform: 'twitter' | 'reddit' | 'linkedin';
+  platform: 'twitter' | 'linkedin' | 'reddit';
   content: string;
-  scheduledAt: string;
   status: 'draft' | 'scheduled' | 'posted';
-  productId?: string;
+  scheduledDate?: string;
+  engagement?: { likes: number; retweets: number; clicks: number };
 }
 
-export type TabId = 'dashboard' | 'find-thread' | 'generate-guide' | 'my-products' | 'distribution' | 'revenue';
+export interface RevenueData {
+  month: string;
+  revenue: number;
+  productCount: number;
+}

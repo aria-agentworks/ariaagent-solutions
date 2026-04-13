@@ -1,118 +1,41 @@
-import type { Product, RedditThread } from '@/types/product';
-
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    style: 'currency', currency: 'USD',
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
   }).format(amount);
 }
 
 export function formatNumber(num: number): string {
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num.toString();
 }
 
-export function getStatusColor(status: Product['status']): string {
-  switch (status) {
-    case 'live':
-      return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-    case 'listed':
-      return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-    case 'draft':
-      return 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30';
-    default:
-      return 'bg-zinc-500/20 text-zinc-400 border-zinc-500/30';
-  }
-}
-
-export function getStatusLabel(status: Product['status']): string {
-  switch (status) {
-    case 'live':
-      return 'Live';
-    case 'listed':
-      return 'Listed';
-    case 'draft':
-      return 'Draft';
-    default:
-      return 'Unknown';
-  }
-}
-
 export function getPanicColor(score: number): string {
-  if (score >= 90) return 'text-red-400';
-  if (score >= 70) return 'text-amber-400';
-  return 'text-emerald-400';
+  if (score >= 9) return 'text-red-400 bg-red-400/10 border-red-400/20';
+  if (score >= 7) return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
+  return 'text-yellow-300 bg-yellow-300/10 border-yellow-300/20';
 }
 
 export function getPanicLabel(score: number): string {
-  if (score >= 90) return 'EXTREME';
-  if (score >= 70) return 'HIGH';
-  if (score >= 50) return 'MEDIUM';
+  if (score >= 9) return 'EXTREME';
+  if (score >= 7) return 'HIGH';
+  if (score >= 5) return 'MEDIUM';
   return 'LOW';
 }
 
-export function generateId(): string {
-  return `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-}
-
-export function getRelativeTime(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return `${Math.floor(diffDays / 30)}mo ago`;
-}
-
-export function getMaxRevenue(): number {
-  return Math.max(
-    ...[
-      4810, 2886, 1880, 1200, 2100, 3400, 2800, 4100, 5200, 0,
-    ]
-  );
-}
-
-export function getStackAnalysis(monthlyRevenue: number, target: number = 10000): { current: number; needed: number; productsNeeded: number; avgRevenuePerProduct: number } {
-  const productsRevenue = [4810, 2886, 1880];
-  const avgRevenuePerProduct = productsRevenue.reduce((a, b) => a + b, 0) / productsRevenue.length;
-  const gap = Math.max(0, target - monthlyRevenue);
-  const productsNeeded = Math.ceil(gap / avgRevenuePerProduct);
-  return {
-    current: monthlyRevenue,
-    needed: gap,
-    productsNeeded,
-    avgRevenuePerProduct,
-  };
-}
-
-export function threadToGuideContext(thread: RedditThread): string {
-  return `Thread: "${thread.title}" from ${thread.subreddit}
-Author: ${thread.author} | Upvotes: ${thread.upvotes.toLocaleString()} | Comments: ${thread.comments.toLocaleString()}
-Panic Score: ${thread.panicScore}/100
-
-Original Post:
-${thread.snippet}
-
-Top Comments:
-${thread.topComments.map((c) => `[${c.upvotes} upvotes] u/${c.author}: ${c.text}`).join('\n\n')}`;
-}
-
-export function getCalendarDays(): { day: number; label: string; hasPost: boolean; isToday: boolean }[] {
-  const days: { day: number; label: string; hasPost: boolean; isToday: boolean }[] = [];
-  const today = new Date().getDate();
-  for (let i = 1; i <= 30; i++) {
-    days.push({
-      day: i,
-      label: i.toString(),
-      hasPost: [3, 5, 8, 10, 12, 14, 15, 17, 19, 21, 24, 26, 28].includes(i),
-      isToday: i === today,
-    });
+export function getStatusColor(status: string): string {
+  switch (status) {
+    case 'live': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
+    case 'listed': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+    case 'draft': return 'text-zinc-400 bg-zinc-400/10 border-zinc-400/20';
+    case 'posted': return 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20';
+    case 'scheduled': return 'text-amber-400 bg-amber-400/10 border-amber-400/20';
+    default: return 'text-zinc-400 bg-zinc-400/10 border-zinc-400/20';
   }
-  return days;
+}
+
+export function calculateStackAnalysis(currentMonthly: number, targetMonthly: number, avgPerProduct: number) {
+  const gap = Math.max(0, targetMonthly - currentMonthly);
+  const productsNeeded = Math.ceil(gap / avgPerProduct);
+  return { currentMonthly, gap, productsNeeded };
 }

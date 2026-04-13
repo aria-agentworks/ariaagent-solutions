@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const stats = {
+  return NextResponse.json({
     totalProducts: 4,
-    monthlyRevenue: 4810,
+    monthlyRevenue: 7400,
     activePages: 3,
-    avgBuildTime: '4.2 hrs',
-    totalSales: 248,
-    revenueGrowth: 32.4,
-    topNiche: 'Crypto / Taxes',
-  };
-
-  return NextResponse.json(stats);
+    avgBuildTime: '5.5 hrs',
+    totalRevenue: 21110,
+    totalSales: 135,
+    revenueGrowth: 42,
+  });
 }
