@@ -1,67 +1,23 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Bob for Ads - Shared Data Contract",
-  "description": "The canonical data format that flows from Brain to Hands to Mouth",
-
   "definitions": {
     "AdConcept": {
       "type": "object",
       "required": ["id", "hook", "headline", "body_copy", "image_prompt", "target_audience"],
       "properties": {
-        "id": { "type": "string", "description": "Unique concept ID (e.g. A1, A2, B1, B2)" },
-        "hook_type": { "type": "string", "enum": ["question", "bold_claim", "pain_point", "social_proof", "curiosity", "fear_of_missing_out"] },
-        "hook": { "type": "string", "description": "The opening hook (first 2-3 seconds of attention)" },
-        "headline": { "type": "string", "maxLength": 40, "description": "Meta headline (25-40 chars)" },
-        "body_copy": { "type": "string", "maxLength": 125, "description": "Primary text for Meta (up to 125 chars visible)" },
-        "long_copy": { "type": "string", "description": "Full ad copy / description" },
-        "image_prompt": { "type": "string", "description": "Prompt for image generation (Replicate Flux Pro)" },
-        "video_motion_prompt": { "type": "string", "description": "Prompt for video animation (Hailuo 2)" },
-        "target_audience": { "type": "string", "description": "Who this ad targets" },
-        "image_url": { "type": "string", "description": "Path or URL to generated image" },
-        "video_url": { "type": "string", "description": "Path or URL to generated video" },
-        "meta_ad_id": { "type": "string", "description": "Meta Ad ID after deployment" },
-        "meta_adset_id": { "type": "string", "description": "Meta AdSet ID after deployment" },
-        "meta_creative_id": { "type": "string", "description": "Meta Creative ID after deployment" },
-        "status": { "type": "string", "enum": ["concept", "generating", "deployed", "monitoring", "paused", "scaled", "killed"], "default": "concept" }
-      }
-    },
-    "BrainOutput": {
-      "type": "object",
-      "required": ["url", "brand_name", "generated_at", "concepts"],
-      "properties": {
-        "url": { "type": "string" },
-        "brand_name": { "type": "string" },
-        "generated_at": { "type": "string", "format": "date-time" },
-        "session_id": { "type": "string" },
-        "concepts": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/AdConcept" },
-          "minItems": 6, "maxItems": 6
-        }
-      }
-    },
-    "DeploymentResult": {
-      "type": "object",
-      "properties": {
-        "campaign_id": { "type": "string" },
-        "campaign_name": { "type": "string" },
-        "total_daily_budget": { "type": "number" },
-        "ads_deployed": { "type": "array", "items": { "type": "object", "properties": {
-          "concept_id": { "type": "string" }, "campaign_id": { "type": "string" },
-          "adset_id": { "type": "string" }, "creative_id": { "type": "string" },
-          "ad_id": { "type": "string" }, "status": { "type": "string" }
-        }}},
-        "deployed_at": { "type": "string", "format": "date-time" }
-      }
-    },
-    "MonitorAlert": {
-      "type": "object",
-      "properties": {
-        "type": { "type": "string", "enum": ["bleeder", "winner", "fatigue", "pacing", "info"] },
-        "severity": { "type": "string", "enum": ["critical", "warning", "info"] },
-        "ad_id": { "type": "string" },
-        "message": { "type": "string" },
-        "detected_at": { "type": "string", "format": "date-time" }
+        "id": { "type": "string" },
+        "hook_type": { "type": "string", "enum": ["question","bold_claim","pain_point","social_proof","curiosity","fear_of_missing_out"] },
+        "hook": { "type": "string" },
+        "headline": { "type": "string", "maxLength": 40 },
+        "body_copy": { "type": "string", "maxLength": 125 },
+        "long_copy": { "type": "string" },
+        "image_prompt": { "type": "string" },
+        "video_motion_prompt": { "type": "string" },
+        "target_audience": { "type": "string" },
+        "image_url": { "type": "string" },
+        "video_url": { "type": "string" },
+        "meta_ad_id": { "type": "string" },
+        "meta_adset_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["concept","generating","deployed","monitoring","paused","scaled","killed"] }
       }
     }
   }
