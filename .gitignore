@@ -54,3 +54,4 @@ db/
 *.tmp
 .turbo/
 .vercel/
+.vercel
