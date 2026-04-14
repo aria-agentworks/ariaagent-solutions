@@ -6,7 +6,13 @@ import type { Lead } from '@/types/marketing';
 export default function EnrichLeadsView() {
   const { leads, updateLead, deleteLead } = useMarketingStore();
   const [enriching, setEnriching] = useState<string | null>(null);
-  const [enrichResults, setEnrichResults] = useState<Record<string, { emails: string[]; linkedinUrl: string }>>({});
+  const [enrichResults, setEnrichResults] = useState<Record<string, {
+    contacts: Array<{ name: string; title: string; confidence: string; source: string }>;
+    emails: string[];
+    linkedinUrl: string;
+    companyWebsite: string;
+    note: string;
+  }>>({});
   const [enrichErrors, setEnrichErrors] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'no-email' | 'no-linkedin' | 'all'>('no-email');
   const [bulkEnriching, setBulkEnriching] = useState(false);
@@ -17,7 +23,6 @@ export default function EnrichLeadsView() {
   const [manualEmails, setManualEmails] = useState<Record<string, string>>({});
   const [manualNames, setManualNames] = useState<Record<string, string>>({});
   const [manualTitles, setManualTitles] = useState<Record<string, string>>({});
-  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
 
   const needsEnrichment = useMemo(() => {
     return leads.filter((l) => {
@@ -46,8 +51,8 @@ export default function EnrichLeadsView() {
       const data = await res.json();
       if (data.success) {
         setEnrichResults((prev) => ({ ...prev, [lead.id]: data }));
-        if (data.emails.length === 0) {
-          setEnrichErrors((prev) => ({ ...prev, [lead.id]: 'No email patterns could be generated. Enter a contact name above or add an email manually.' }));
+        if ((!data.contacts || data.contacts.length === 0) && (!data.emails || data.emails.length === 0)) {
+          setEnrichErrors((prev) => ({ ...prev, [lead.id]: data.note || 'No contacts or emails found. Enter a name manually and try again.' }));
         }
       } else {
         setEnrichErrors((prev) => ({ ...prev, [lead.id]: data.error || 'Enrichment failed' }));
@@ -79,19 +84,20 @@ export default function EnrichLeadsView() {
     }
   };
 
+  const applyContact = (leadId: string, contactName: string, contactTitle: string) => {
+    updateLead(leadId, { name: contactName, title: contactTitle || 'Decision Maker', nextAction: 'enrich' });
+    // Clear enrichment results so user can re-enrich with the new name for emails
+    setEnrichResults((prev) => { const next = { ...prev }; delete next[leadId]; return next; });
+  };
+
   const applyManualName = (leadId: string) => {
     const name = manualNames[leadId];
     const title = manualTitles[leadId] || '';
     if (name && name.includes(' ')) {
       updateLead(leadId, { name, title });
-      // Clear enrichment results so they can re-enrich with the new name
       setEnrichResults((prev) => { const next = { ...prev }; delete next[leadId]; return next; });
       setEnrichErrors((prev) => { const next = { ...prev }; delete next[leadId]; return next; });
     }
-  };
-
-  const skipEnrichment = (leadId: string) => {
-    updateLead(leadId, { nextAction: 'linkedin_connect' });
   };
 
   const handleDelete = (leadId: string) => {
@@ -109,18 +115,24 @@ export default function EnrichLeadsView() {
   const noLinkedin = leads.filter((l) => l.linkedinStatus === 'none' && l.status !== 'converted' && l.status !== 'lost' && l.status !== 'bounced').length;
   const enrichRate = totalLeads > 0 ? (((totalLeads - noEmail) / totalLeads) * 100).toFixed(0) : '0';
 
+  const confidenceColor = (c: string) => {
+    if (c === 'high') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    if (c === 'medium') return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';
+  };
+
   return (
     <div className="space-y-6 max-w-6xl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-white">Enrich Leads</h1>
-          <p className="text-xs text-zinc-500 mt-1">Add contact names, find emails, and locate LinkedIn profiles.</p>
+          <p className="text-xs text-zinc-500 mt-1">Find real contact names, emails, and LinkedIn profiles using AI web search.</p>
         </div>
         <div className="flex gap-2">
           {needsEnrichment.length > 0 && (
             <button onClick={bulkEnrich} disabled={bulkEnriching}
               className="px-4 py-2 rounded-lg bg-emerald-500 text-xs font-semibold text-black hover:bg-emerald-400 transition-colors disabled:opacity-50">
-              {bulkEnriching ? '⏳ Enriching...' : `✨ Bulk Enrich ${Math.min(needsEnrichment.length, 10)}`}
+              {bulkEnriching ? '⏳ Enriching...' : `✨ Bulk Enrich (up to ${Math.min(needsEnrichment.length, 10)})`}
             </button>
           )}
         </div>
@@ -187,7 +199,7 @@ export default function EnrichLeadsView() {
                       <p className="text-[11px] text-zinc-500 truncate">{lead.title ? `${lead.title} at ` : ''}{lead.company}{lead.domain ? ` · ${lead.domain}` : ''}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[9px] text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded capitalize">{lead.source.replace(/_/g, ' ')}</span>
-                        <span className="text-[9px] text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded">{lead.industry || 'N/A'}</span>
+                        {lead.industry && <span className="text-[9px] text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded">{lead.industry}</span>}
                         {lead.location && <span className="text-[9px] text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded">{lead.location}</span>}
                       </div>
                     </div>
@@ -210,7 +222,7 @@ export default function EnrichLeadsView() {
                 {/* Manual name + title input (if no name) */}
                 {!lead.name && (
                   <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 mb-3">
-                    <p className="text-[10px] font-bold text-amber-400 mb-2">⚠️ Contact name required for email pattern generation</p>
+                    <p className="text-[10px] font-bold text-amber-400 mb-2">⚠️ Contact name required for email generation</p>
                     <div className="flex gap-2">
                       <input
                         value={manualNames[lead.id] || ''}
@@ -234,7 +246,7 @@ export default function EnrichLeadsView() {
                   </div>
                 )}
 
-                {/* Manual email input — always available */}
+                {/* Manual email input — always available when no email */}
                 {!lead.email && (
                   <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-3 mb-3">
                     <p className="text-[10px] font-bold text-zinc-400 mb-2">📧 Enter email manually (if you know it)</p>
@@ -259,11 +271,35 @@ export default function EnrichLeadsView() {
 
                 {/* Enrichment Results */}
                 {result && (
-                  <div className="space-y-2 mb-3">
-                    {/* Email patterns */}
-                    {result.emails.length > 0 && (
+                  <div className="space-y-3 mb-3">
+                    {/* Found contacts (when no name was provided) */}
+                    {result.contacts && result.contacts.length > 0 && (
+                      <div className="bg-[#0f0f0f] border border-emerald-500/15 rounded-lg p-3">
+                        <p className="text-[10px] font-bold text-emerald-400 mb-2">👤 Found {result.contacts.length} Contact(s) — click to apply</p>
+                        <div className="space-y-1.5">
+                          {result.contacts.map((contact, i) => (
+                            <button key={i} onClick={() => applyContact(lead.id, contact.name, contact.title)}
+                              className="w-full flex items-center justify-between px-3 py-2 rounded bg-emerald-500/5 hover:bg-emerald-500/10 transition-colors text-left">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-semibold text-white">{contact.name}</span>
+                                  <span className={`text-[8px] px-1.5 py-0.5 rounded border font-bold ${confidenceColor(contact.confidence)}`}>
+                                    {contact.confidence}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-zinc-500 truncate">{contact.title}</p>
+                              </div>
+                              <span className="text-[9px] text-emerald-400 font-medium shrink-0 ml-2">Apply</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Email patterns (when name IS provided) */}
+                    {result.emails && result.emails.length > 0 && (
                       <div className="bg-[#0f0f0f] border border-purple-500/15 rounded-lg p-3">
-                        <p className="text-[10px] font-bold text-purple-400 mb-2">📧 Likely Email Patterns (click to apply)</p>
+                        <p className="text-[10px] font-bold text-purple-400 mb-2">📧 Email Patterns — click to apply</p>
                         <div className="space-y-1">
                           {result.emails.map((email, i) => (
                             <button key={i} onClick={() => applyEmail(lead.id, email)}
@@ -275,6 +311,7 @@ export default function EnrichLeadsView() {
                         </div>
                       </div>
                     )}
+
                     {/* LinkedIn */}
                     {result.linkedinUrl && (
                       <div className="bg-[#0f0f0f] border border-sky-500/15 rounded-lg p-3">
@@ -283,7 +320,7 @@ export default function EnrichLeadsView() {
                           className="text-xs text-sky-300 hover:text-sky-200 transition-colors break-all">
                           {result.linkedinUrl}
                         </a>
-                        <div className="flex gap-2 mt-2">
+                        <div className="flex gap-3 mt-2">
                           <button onClick={() => updateLead(lead.id, { linkedinStatus: 'connection_sent' })}
                             className="text-[9px] text-sky-400 hover:text-sky-300 font-medium">
                             → Mark Connection Sent
@@ -294,6 +331,11 @@ export default function EnrichLeadsView() {
                           </button>
                         </div>
                       </div>
+                    )}
+
+                    {/* Info note */}
+                    {result.note && (
+                      <p className="text-[10px] text-zinc-500 bg-zinc-800/30 rounded-lg px-3 py-2">{result.note}</p>
                     )}
                   </div>
                 )}
@@ -306,13 +348,9 @@ export default function EnrichLeadsView() {
                 {/* Actions */}
                 {!result && (
                   <div className="flex gap-2">
-                    <button onClick={() => enrichLead(lead)} disabled={isEnriching || !lead.name}
+                    <button onClick={() => enrichLead(lead)} disabled={isEnriching}
                       className="flex-1 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-purple-400 hover:bg-purple-500/20 transition-colors disabled:opacity-50">
-                      {isEnriching ? '⏳ Enriching...' : lead.name ? '✨ Find Email & LinkedIn' : '⚠️ Add contact name first'}
-                    </button>
-                    <button onClick={() => setEditingLeadId(editingLeadId === lead.id ? null : lead.id)}
-                      className="px-4 py-2 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
-                      Edit
+                      {isEnriching ? '⏳ Searching...' : lead.name ? '✨ Find Email Patterns' : '🔍 Find Contacts & Emails'}
                     </button>
                     <button onClick={() => skipEnrichment(lead.id)}
                       className="px-4 py-2 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
@@ -321,15 +359,22 @@ export default function EnrichLeadsView() {
                   </div>
                 )}
 
-                {/* Inline edit panel */}
-                {editingLeadId === lead.id && (
-                  <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg p-3 mt-2 space-y-2">
-                    <p className="text-[10px] font-bold text-zinc-400">Edit Lead Details</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input value={lead.name} readOnly className="bg-[#141414] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-zinc-500" />
-                      <input value={lead.company} readOnly className="bg-[#141414] border border-[#2a2a2a] rounded px-2 py-1.5 text-[11px] text-zinc-500" />
-                    </div>
-                    <p className="text-[9px] text-zinc-600">Use the name field above to set a contact name for this lead.</p>
+                {/* Re-enrich button when results shown */}
+                {result && (
+                  <div className="flex gap-2">
+                    <button onClick={() => {
+                      setEnrichResults((prev) => { const next = { ...prev }; delete next[lead.id]; return next; });
+                      setEnrichErrors((prev) => { const next = { ...prev }; delete next[lead.id]; return next; });
+                    }}
+                      className="px-4 py-2 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+                      ↻ New Search
+                    </button>
+                    {lead.name && !lead.email && (
+                      <button onClick={() => enrichLead(lead)} disabled={isEnriching}
+                        className="flex-1 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-purple-400 hover:bg-purple-500/20 transition-colors disabled:opacity-50">
+                        {isEnriching ? '⏳ Searching...' : '✨ Generate Email Patterns'}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

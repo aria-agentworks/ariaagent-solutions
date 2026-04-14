@@ -130,7 +130,7 @@ export const useMarketingStore = create<MarketingStore>()(
       setGumroadSales: (sales) => set({ gumroadSales: sales }),
     }),
     {
-      name: 'ariaagent-marketing-v3',
+      name: 'ariaagent-marketing-v4',
       partialize: (state) => ({
         leads: state.leads,
         projects: state.projects,

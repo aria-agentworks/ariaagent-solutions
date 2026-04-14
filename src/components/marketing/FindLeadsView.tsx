@@ -29,6 +29,7 @@ export default function FindLeadsView() {
   const [addingToPipeline, setAddingToPipeline] = useState(false);
   const [bulkContactName, setBulkContactName] = useState('');
   const [bulkContactTitle, setBulkContactTitle] = useState('');
+  const [removedResults, setRemovedResults] = useState<Set<string>>(new Set());
 
   // CSV state
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -51,6 +52,7 @@ export default function FindLeadsView() {
     if (!searchQuery || !searchLocation) return;
     setSearching(true);
     setSearchError('');
+    setRemovedResults(new Set());
     try {
       const res = await fetch('/api/scrape/google-maps', {
         method: 'POST',
@@ -208,6 +210,16 @@ export default function FindLeadsView() {
     setManualForm({ name: '', title: '', company: '', email: '', phone: '', website: '', domain: '', industry: '', location: '', country: '', employeeCount: '' });
   };
 
+  const removeResult = (placeId: string) => {
+    const next = new Set(removedResults);
+    next.add(placeId);
+    setRemovedResults(next);
+    const selNext = new Set(selectedResults);
+    selNext.delete(placeId);
+    setSelectedResults(selNext);
+  };
+
+  const visibleResults = searchResults.filter((r) => !removedResults.has(r.place_id));
   const existingDomains = new Set(leads.map((l) => l.domain));
 
   return (
@@ -253,15 +265,15 @@ export default function FindLeadsView() {
           </div>
 
           {/* Results */}
-          {searchResults.length > 0 && (
+          {visibleResults.length > 0 && (
             <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-white">{searchResults.length} results found</h3>
+                  <h3 className="text-sm font-semibold text-white">{visibleResults.length} results found</h3>
                   <p className="text-[10px] text-zinc-500 mt-0.5">Select companies and optionally set a contact name</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setSelectedResults(new Set(searchResults.map((r) => r.place_id)))}
+                  <button onClick={() => setSelectedResults(new Set(visibleResults.map((r) => r.place_id)))}
                     className="px-3 py-1 rounded-lg bg-[#0f0f0f] text-[10px] text-zinc-500 hover:text-white border border-[#2a2a2a] transition-colors">
                     Select All
                   </button>
@@ -291,7 +303,7 @@ export default function FindLeadsView() {
                 <p className="text-[9px] text-amber-400/70 mb-3 -mt-2">Tip: Set a contact name now so emails can be generated. You can also add names later in Enrich.</p>
               )}
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {searchResults.map((result) => {
+                {visibleResults.map((result) => {
                   const isSelected = selectedResults.has(result.place_id);
                   const domain = result.website ? (() => {
                     try { return new URL(result.website.startsWith('http') ? result.website : `https://${result.website}`).hostname; }
@@ -300,14 +312,16 @@ export default function FindLeadsView() {
                   const exists = domain ? existingDomains.has(domain) : false;
                   return (
                     <div key={result.place_id}
-                      onClick={() => !exists && toggleResult(result.place_id)}
-                      className={`flex items-center gap-3 bg-[#0f0f0f] border rounded-lg p-3 transition-all cursor-pointer ${
-                        exists ? 'border-zinc-800 opacity-50 cursor-not-allowed' : isSelected ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-[#1f1f1f] hover:border-[#2a2a2a]'
+                      className={`flex items-center gap-3 bg-[#0f0f0f] border rounded-lg p-3 transition-all ${
+                        exists ? 'border-zinc-800 opacity-50 cursor-not-allowed' : isSelected ? 'border-emerald-500/30 bg-emerald-500/5 cursor-pointer' : 'border-[#1f1f1f] hover:border-[#2a2a2a] cursor-pointer'
                       }`}>
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-zinc-600'}`}>
-                        {isSelected && <span className="text-[10px] text-black font-bold">✓</span>}
-                      </div>
-                      <div className="flex-1 min-w-0">
+                      {!exists && (
+                        <div onClick={() => toggleResult(result.place_id)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-zinc-600'}`}>
+                          {isSelected && <span className="text-[10px] text-black font-bold">✓</span>}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0" onClick={() => !exists && toggleResult(result.place_id)}>
                         <div className="flex items-center gap-2">
                           <p className="text-xs font-semibold text-white truncate">{result.name}</p>
                           {result.rating > 0 && <span className="text-[9px] text-amber-400">★ {result.rating}</span>}
@@ -323,6 +337,10 @@ export default function FindLeadsView() {
                             onClick={(e) => e.stopPropagation()}
                             className="text-[10px] text-zinc-500 hover:text-emerald-400 transition-colors">🔗</a>
                         )}
+                        <button onClick={(e) => { e.stopPropagation(); removeResult(result.place_id); }}
+                          className="text-[10px] text-zinc-600 hover:text-red-400 transition-colors px-1" title="Remove this result">
+                          ✕
+                        </button>
                       </div>
                     </div>
                   );
