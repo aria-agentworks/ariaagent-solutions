@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     // Try Resend first
     if (resendApiKey) {
       const resend = new Resend(resendApiKey);
-      const fromEmail = fromName ? `${fromName} <onboarding@resend.dev>` : 'onboarding@resend.dev';
+      const fromEmail = fromName ? `${fromName} <outreach@ariaagent.agency>` : 'ariaagent solutions <outreach@ariaagent.agency>';
 
       const { data, error } = await resend.emails.send({
         from: fromEmail,
