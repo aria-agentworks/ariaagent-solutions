@@ -206,6 +206,28 @@ export default function DashboardView() {
           </div>
         </div>
       </div>
+
+      {/* Empty state when no leads */}
+      {totalLeads === 0 && (
+        <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-10 text-center">
+          <p className="text-3xl mb-3">🔍</p>
+          <h3 className="text-base font-semibold text-white mb-2">No leads yet — let's find some real ones</h3>
+          <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
+            Search companies on Google Maps (US & Europe), import from Expleo via CSV, or add leads manually.
+            All demo data has been removed.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <button onClick={() => setView('find-leads')}
+              className="px-5 py-2.5 rounded-lg bg-emerald-500 text-sm font-semibold text-black hover:bg-emerald-400 transition-colors">
+              🔍 Find Leads
+            </button>
+            <button onClick={() => setView('revenue')}
+              className="px-5 py-2.5 rounded-lg bg-[#1a1a1a] text-sm font-medium text-zinc-400 hover:text-white border border-[#2a2a2a] transition-colors">
+              📊 Revenue
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
