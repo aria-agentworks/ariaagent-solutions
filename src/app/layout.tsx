@@ -3,18 +3,19 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "Bob for Ads — Unified Meta Ads AI Agent Dashboard",
+  title: "ariaagent solutions — AI-Powered Marketing Dashboard",
   description:
-    "Create and manage Meta ad campaigns with AI-powered creative generation, automated deployment, and intelligent monitoring.",
+    "Market any product with AI-powered outreach across LinkedIn, Twitter, Reddit, and Email. Pre-loaded Gumroad integrations and Claude AI messaging.",
   keywords: [
-    "Bob for Ads",
-    "Meta Ads",
-    "AI Advertising",
-    "Campaign Management",
-    "Creative Generation",
+    "ariaagent",
+    "Marketing Dashboard",
+    "AI Outreach",
+    "Gumroad",
+    "LinkedIn Marketing",
+    "Lead Generation",
   ],
   icons: {
-    icon: "/bob-logo.svg",
+    icon: "/logo.svg",
   },
 };
 

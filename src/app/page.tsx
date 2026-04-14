@@ -1,57 +1,46 @@
 'use client';
-
 import { AnimatePresence, motion } from 'framer-motion';
-import { usePanicStore } from '@/store/usePanicStore';
-import Header from '@/components/aria/Header';
-import Dashboard from '@/components/aria/Dashboard';
-import ThreadFinder from '@/components/aria/ThreadFinder';
-import GuideGenerator from '@/components/aria/GuideGenerator';
-import ProductManager from '@/components/aria/ProductManager';
-import DistributionPlanner from '@/components/aria/DistributionPlanner';
-import OutreachAgent from '@/components/aria/OutreachAgent';
-import RevenueTracker from '@/components/aria/RevenueTracker';
+import { useMarketingStore } from '@/store/useMarketingStore';
+import Sidebar from '@/components/marketing/Sidebar';
+import DashboardView from '@/components/marketing/DashboardView';
+import ProjectsView from '@/components/marketing/ProjectsView';
+import OutreachView from '@/components/marketing/OutreachView';
+import LeadsView from '@/components/marketing/LeadsView';
+import RevenueView from '@/components/marketing/RevenueView';
+import ChannelsView from '@/components/marketing/ChannelsView';
 
 export default function Home() {
-  const { activeTab } = usePanicStore();
+  const { activeView } = useMarketingStore();
 
-  const renderTab = () => {
-    switch (activeTab) {
-      case 'dashboard': return <Dashboard />;
-      case 'outreach': return <OutreachAgent />;
-      case 'threads': return <ThreadFinder />;
-      case 'generate': return <GuideGenerator />;
-      case 'products': return <ProductManager />;
-      case 'distribution': return <DistributionPlanner />;
-      case 'revenue': return <RevenueTracker />;
-      default: return <Dashboard />;
+  const renderView = () => {
+    switch (activeView) {
+      case 'dashboard': return <DashboardView />;
+      case 'projects': return <ProjectsView />;
+      case 'outreach': return <OutreachView />;
+      case 'leads': return <LeadsView />;
+      case 'revenue': return <RevenueView />;
+      case 'channels': return <ChannelsView />;
+      default: return <DashboardView />;
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0a0a0a]">
-      <Header />
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6">
-        <div className="mx-auto max-w-7xl">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeTab}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-            >
-              {renderTab()}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+    <div className="min-h-screen flex bg-[#0a0a0a]">
+      <Sidebar />
+      <main className="flex-1 overflow-auto">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeView}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="p-6"
+          >
+            {renderView()}
+          </motion.div>
+        </AnimatePresence>
       </main>
-      <footer className="border-t border-[#1f1f1f] bg-[#0a0a0a] px-4 py-3">
-        <div className="mx-auto max-w-7xl flex items-center justify-center">
-          <p className="text-[10px] text-zinc-600 tracking-wider">
-            ARIAAGENT SOLUTIONS v1.0 — Find Pain. Build Solutions. Stack Revenue.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }
