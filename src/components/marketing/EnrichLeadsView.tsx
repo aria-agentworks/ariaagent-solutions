@@ -4,13 +4,14 @@ import { useMarketingStore } from '@/store/useMarketingStore';
 import type { Lead } from '@/types/marketing';
 
 export default function EnrichLeadsView() {
-  const { leads, updateLead } = useMarketingStore();
+  const { leads, updateLead, deleteLead } = useMarketingStore();
   const [enriching, setEnriching] = useState<string | null>(null);
   const [enrichResults, setEnrichResults] = useState<Record<string, { emails: string[]; linkedinUrl: string }>>({});
   const [enrichErrors, setEnrichErrors] = useState<Record<string, string>>({});
   const [filter, setFilter] = useState<'no-email' | 'no-linkedin' | 'all'>('no-email');
   const [bulkEnriching, setBulkEnriching] = useState(false);
   const [search, setSearch] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // Manual input states
   const [manualEmails, setManualEmails] = useState<Record<string, string>>({});
@@ -91,6 +92,16 @@ export default function EnrichLeadsView() {
 
   const skipEnrichment = (leadId: string) => {
     updateLead(leadId, { nextAction: 'linkedin_connect' });
+  };
+
+  const handleDelete = (leadId: string) => {
+    if (confirmDelete === leadId) {
+      deleteLead(leadId);
+      setConfirmDelete(null);
+    } else {
+      setConfirmDelete(leadId);
+      setTimeout(() => setConfirmDelete(null), 4000);
+    }
   };
 
   const totalLeads = leads.length;
@@ -184,6 +195,15 @@ export default function EnrichLeadsView() {
                   <div className="flex items-center gap-2 shrink-0">
                     {!lead.email && <span className="px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-[9px] font-bold text-purple-400">No Email</span>}
                     {lead.linkedinStatus === 'none' && <span className="px-2 py-0.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-[9px] font-bold text-sky-400">No LinkedIn</span>}
+                    <button onClick={() => handleDelete(lead.id)}
+                      className={`px-2 py-0.5 rounded-lg border text-[10px] transition-colors ${
+                        confirmDelete === lead.id
+                          ? 'bg-red-500 text-white font-bold border-red-500'
+                          : 'bg-red-500/5 border-red-500/10 text-red-400/60 hover:text-red-400 hover:bg-red-500/10'
+                      }`}
+                      title="Delete lead">
+                      {confirmDelete === lead.id ? 'Delete?' : '🗑'}
+                    </button>
                   </div>
                 </div>
 

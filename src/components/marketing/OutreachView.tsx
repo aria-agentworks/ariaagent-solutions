@@ -6,7 +6,7 @@ import type { Lead } from '@/types/marketing';
 type OutreachTab = 'email' | 'linkedin' | 'bulk';
 
 export default function OutreachView() {
-  const { leads, projects, updateLead } = useMarketingStore();
+  const { leads, projects, updateLead, deleteLead } = useMarketingStore();
   const [activeTab, setActiveTab] = useState<OutreachTab>('email');
   const [selectedProduct, setSelectedProduct] = useState(projects[0]?.id || '');
   const [generating, setGenerating] = useState<string | null>(null);
@@ -18,6 +18,7 @@ export default function OutreachView() {
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [bulkSending, setBulkSending] = useState(false);
   const [emailConfig, setEmailConfig] = useState<'unconfigured' | 'resend' | 'gmail' | 'checking'>('checking');
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   // LinkedIn state
   const [liGenerating, setLiGenerating] = useState<string | null>(null);
@@ -161,6 +162,16 @@ export default function OutreachView() {
 
   const copy = (text: string) => { navigator.clipboard.writeText(text); };
 
+  const handleDelete = (leadId: string) => {
+    if (confirmDelete === leadId) {
+      deleteLead(leadId);
+      setConfirmDelete(null);
+    } else {
+      setConfirmDelete(leadId);
+      setTimeout(() => setConfirmDelete(null), 4000);
+    }
+  };
+
   const bulkGenerateEmails = async () => {
     setBulkGenerating(true);
     const targets = activeLeads.filter((l) => selectedLeads.has(l.id));
@@ -270,6 +281,15 @@ export default function OutreachView() {
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[9px] text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded">Step {currentStep}/3</span>
                       <span className="text-[9px] text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded max-w-[180px] truncate">{lead.email}</span>
+                      <button onClick={() => handleDelete(lead.id)}
+                        className={`px-1.5 py-0.5 rounded border text-[10px] transition-colors ${
+                          confirmDelete === lead.id
+                            ? 'bg-red-500 text-white font-bold border-red-500'
+                            : 'text-red-400/40 hover:text-red-400 border-transparent hover:border-red-500/10 hover:bg-red-500/5'
+                        }`}
+                        title="Delete lead">
+                        {confirmDelete === lead.id ? 'Sure?' : '🗑'}
+                      </button>
                     </div>
                   </div>
 
@@ -361,6 +381,15 @@ export default function OutreachView() {
                       <a href={`https://www.linkedin.com/sales/search?keywords=${encodeURIComponent((lead.name || '') + ' ' + lead.company)}`}
                         target="_blank" rel="noopener noreferrer"
                         className="text-[10px] text-sky-400 hover:text-sky-300 font-medium">🔗 Find</a>
+                      <button onClick={() => handleDelete(lead.id)}
+                        className={`px-1.5 py-0.5 rounded border text-[10px] transition-colors ${
+                          confirmDelete === lead.id
+                            ? 'bg-red-500 text-white font-bold border-red-500'
+                            : 'text-red-400/40 hover:text-red-400 border-transparent hover:border-red-500/10 hover:bg-red-500/5'
+                        }`}
+                        title="Delete lead">
+                        {confirmDelete === lead.id ? 'Sure?' : '🗑'}
+                      </button>
                     </div>
                   </div>
 

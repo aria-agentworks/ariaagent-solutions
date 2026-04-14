@@ -23,7 +23,7 @@ const NEXT_STATUS: Partial<Record<LeadStatus, LeadStatus>> = {
 };
 
 export default function PipelineView() {
-  const { leads, updateLead, deleteLead, projects } = useMarketingStore();
+  const { leads, updateLead, deleteLead, deleteLeads, projects } = useMarketingStore();
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('list');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterSource, setFilterSource] = useState<string>('all');
@@ -32,6 +32,9 @@ export default function PipelineView() {
   const [expandedLead, setExpandedLead] = useState<string | null>(null);
   const [editNotes, setEditNotes] = useState('');
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
 
   const filteredLeads = useMemo(() => {
     return leads.filter((l) => {
@@ -68,6 +71,31 @@ export default function PipelineView() {
     setEditingNotes(null);
   };
 
+  const handleDelete = (leadId: string) => {
+    if (confirmDelete === leadId) {
+      deleteLead(leadId);
+      setConfirmDelete(null);
+      setExpandedLead(null);
+    } else {
+      setConfirmDelete(leadId);
+      setTimeout(() => setConfirmDelete(null), 4000);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (bulkSelected.size > 0) {
+      deleteLeads(Array.from(bulkSelected));
+      setBulkSelected(new Set());
+      setBulkMode(false);
+    }
+  };
+
+  const toggleBulkSelect = (id: string) => {
+    const next = new Set(bulkSelected);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setBulkSelected(next);
+  };
+
   const sources = useMemo(() => {
     const set = new Set(leads.map((l) => l.source));
     return Array.from(set);
@@ -89,6 +117,16 @@ export default function PipelineView() {
             className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${viewMode === 'kanban' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-[#141414] text-zinc-500 border border-[#1f1f1f]'}`}>
             📊 Kanban
           </button>
+          <button onClick={() => { setBulkMode(!bulkMode); setBulkSelected(new Set()); }}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${bulkMode ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-[#141414] text-zinc-500 border border-[#1f1f1f]'}`}>
+            {bulkMode ? '✕ Cancel' : '🗑 Bulk Delete'}
+          </button>
+          {bulkMode && bulkSelected.size > 0 && (
+            <button onClick={handleBulkDelete}
+              className="px-3 py-1.5 rounded-lg bg-red-500 text-[11px] font-semibold text-white hover:bg-red-400 transition-colors">
+              🗑 Delete {bulkSelected.size}
+            </button>
+          )}
         </div>
       </div>
 
@@ -127,15 +165,26 @@ export default function PipelineView() {
                 </div>
                 <div className="p-2 space-y-2 flex-1 overflow-y-auto">
                   {stageLeads.map((lead) => (
-                    <div key={lead.id} className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-3 hover:border-[#2a2a2a] transition-colors">
+                    <div key={lead.id} className={`bg-[#0f0f0f] border rounded-lg p-3 hover:border-[#2a2a2a] transition-colors ${bulkSelected.has(lead.id) ? 'border-red-500/50 bg-red-500/5' : 'border-[#1f1f1f]'}`}>
                       <div className="flex items-center gap-2 mb-2">
+                        {bulkMode && (
+                          <button onClick={() => toggleBulkSelect(lead.id)}
+                            className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${bulkSelected.has(lead.id) ? 'border-red-500 bg-red-500' : 'border-zinc-600'}`}>
+                            {bulkSelected.has(lead.id) && <span className="text-[8px] text-white font-bold">✓</span>}
+                          </button>
+                        )}
                         <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center text-[8px] font-bold text-zinc-400 shrink-0">
                           {lead.name ? lead.name.split(' ').map((n) => n[0]).join('') : '??'}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-semibold text-white truncate">{lead.name || 'Unknown'}</p>
                           <p className="text-[9px] text-zinc-500 truncate">{lead.company}</p>
                         </div>
+                        <button onClick={() => handleDelete(lead.id)}
+                          className={`text-[10px] shrink-0 px-1.5 py-0.5 rounded transition-colors ${confirmDelete === lead.id ? 'bg-red-500 text-white font-bold' : 'text-zinc-600 hover:text-red-400 hover:bg-red-500/10'}`}
+                          title="Delete lead">
+                          {confirmDelete === lead.id ? 'Sure?' : '✕'}
+                        </button>
                       </div>
                       <div className="flex items-center gap-1 flex-wrap mb-2">
                         <span className="text-[8px] text-zinc-600 bg-zinc-800 px-1 py-0.5 rounded capitalize">{lead.source.replace(/_/g, ' ')}</span>
@@ -175,9 +224,15 @@ export default function PipelineView() {
               const isExpanded = expandedLead === lead.id;
 
               return (
-                <div key={lead.id} className={`bg-[#141414] border rounded-xl overflow-hidden transition-all ${isExpanded ? 'border-emerald-500/30' : 'border-[#1f1f1f]'}`}>
+                <div key={lead.id} className={`bg-[#141414] border rounded-xl overflow-hidden transition-all ${isExpanded ? 'border-emerald-500/30' : 'border-[#1f1f1f]'} ${bulkSelected.has(lead.id) ? 'ring-1 ring-red-500/50' : ''}`}>
                   <div className="p-4">
                     <div className="flex items-center gap-3">
+                      {bulkMode && (
+                        <button onClick={() => toggleBulkSelect(lead.id)}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${bulkSelected.has(lead.id) ? 'border-red-500 bg-red-500' : 'border-zinc-600'}`}>
+                          {bulkSelected.has(lead.id) && <span className="text-[9px] text-white font-bold">✓</span>}
+                        </button>
+                      )}
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-300 shrink-0 cursor-pointer"
                         onClick={() => setExpandedLead(isExpanded ? null : lead.id)}>
                         {lead.name ? lead.name.split(' ').map((n) => n[0]).join('') : '??'}
@@ -200,12 +255,14 @@ export default function PipelineView() {
                             → Advance
                           </button>
                         )}
-                        {lead.status !== 'converted' && lead.status !== 'lost' && (
-                          <button onClick={() => markLost(lead)}
-                            className="px-2 py-1 rounded-lg bg-red-500/5 border border-red-500/10 text-[10px] text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                            ✕
-                          </button>
-                        )}
+                        <button onClick={() => handleDelete(lead.id)}
+                          className={`px-2 py-1 rounded-lg border text-[10px] transition-colors ${
+                            confirmDelete === lead.id
+                              ? 'bg-red-500 text-white font-bold border-red-500'
+                              : 'bg-red-500/5 border-red-500/10 text-red-400/60 hover:text-red-400 hover:bg-red-500/10'
+                          }`}>
+                          {confirmDelete === lead.id ? 'Delete?' : '🗑'}
+                        </button>
                       </div>
                     </div>
                   </div>
