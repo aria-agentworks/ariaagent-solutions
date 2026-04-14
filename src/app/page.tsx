@@ -3,11 +3,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useMarketingStore } from '@/store/useMarketingStore';
 import Sidebar from '@/components/marketing/Sidebar';
 import DashboardView from '@/components/marketing/DashboardView';
-import ProjectsView from '@/components/marketing/ProjectsView';
+import FindLeadsView from '@/components/marketing/FindLeadsView';
+import EnrichLeadsView from '@/components/marketing/EnrichLeadsView';
 import OutreachView from '@/components/marketing/OutreachView';
-import LeadsView from '@/components/marketing/LeadsView';
+import PipelineView from '@/components/marketing/PipelineView';
 import RevenueView from '@/components/marketing/RevenueView';
-import ChannelsView from '@/components/marketing/ChannelsView';
 
 export default function Home() {
   const { activeView } = useMarketingStore();
@@ -15,11 +15,11 @@ export default function Home() {
   const renderView = () => {
     switch (activeView) {
       case 'dashboard': return <DashboardView />;
-      case 'projects': return <ProjectsView />;
+      case 'find-leads': return <FindLeadsView />;
+      case 'enrich': return <EnrichLeadsView />;
       case 'outreach': return <OutreachView />;
-      case 'leads': return <LeadsView />;
+      case 'pipeline': return <PipelineView />;
       case 'revenue': return <RevenueView />;
-      case 'channels': return <ChannelsView />;
       default: return <DashboardView />;
     }
   };

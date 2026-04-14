@@ -8,39 +8,58 @@ export interface MarketingProject {
   gumroadUrl: string;
   coverImage?: string;
   status: 'active' | 'paused' | 'archived';
-  channels: ('linkedin' | 'twitter' | 'reddit' | 'email' | 'discord' | 'producthunt')[];
+  channels: string[];
   stats: { leads: number; messagesSent: number; replies: number; conversions: number; revenue: number };
   createdAt: string;
 }
 
-export type LeadStatus = 'new' | 'contacted' | 'replied' | 'interested' | 'converted' | 'lost';
-export type LeadAction = 'connect' | 'followup1' | 'followup2' | 'close' | 'reply';
+export type LeadStatus = 'new' | 'enriching' | 'contacted' | 'replied' | 'interested' | 'converted' | 'lost' | 'bounced';
+export type LeadSource = 'google_maps' | 'csv_import' | 'manual' | 'linkedin' | 'expleo';
+export type LeadChannel = 'email' | 'linkedin' | 'facebook' | 'phone';
+export type NextAction = 'enrich' | 'email1' | 'email2' | 'email3' | 'linkedin_connect' | 'linkedin_dm' | 'followup' | 'close' | null;
+export type LinkedinStatus = 'none' | 'connection_sent' | 'connected' | 'dm_sent' | 'replied';
 
 export interface MessageHistoryEntry {
-  step: string;
-  sentAt: string;
+  type: string;
+  channel: string;
   content: string;
+  sentAt: string;
+  status: string;
 }
 
 export interface Lead {
   id: string;
-  projectId: string;
   name: string;
   title: string;
   company: string;
+  email: string;
+  phone: string;
+  website: string;
   domain: string;
   industry: string;
+  location: string;
+  country: string;
   employeeCount: string;
-  channel: 'linkedin' | 'twitter' | 'reddit' | 'email' | 'manual';
+  source: LeadSource;
+  channel: LeadChannel;
   status: LeadStatus;
-  generatedMessages?: { connectionRequest?: string; followUp1?: string; followUp2?: string };
+  productId: string | null;
+  nextAction: NextAction;
+  nextActionDate: string | null;
+  emailSequenceStep: number;
+  linkedinStatus: LinkedinStatus;
   notes: string;
+  tags: string[];
   createdAt: string;
-  // Automation fields
-  nextAction?: LeadAction;
-  nextActionDate?: string;
-  lastContactedAt?: string;
-  messageHistory?: MessageHistoryEntry[];
+  lastContactedAt: string | null;
+  messageHistory: MessageHistoryEntry[];
+}
+
+export interface EmailSequence {
+  id: string;
+  name: string;
+  steps: Array<{ step: number; subject: string; body: string; delayDays: number }>;
+  productId: string;
 }
 
 export interface SocialProfile {
@@ -49,4 +68,14 @@ export interface SocialProfile {
   url: string;
   icon: string;
   color: string;
+}
+
+export interface GoogleMapsResult {
+  name: string;
+  address: string;
+  phone: string;
+  website: string;
+  rating: number;
+  types: string[];
+  place_id: string;
 }
