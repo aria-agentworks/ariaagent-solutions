@@ -27,6 +27,8 @@ export default function FindLeadsView() {
   const [searchError, setSearchError] = useState('');
   const [selectedResults, setSelectedResults] = useState<Set<string>>(new Set());
   const [addingToPipeline, setAddingToPipeline] = useState(false);
+  const [bulkContactName, setBulkContactName] = useState('');
+  const [bulkContactTitle, setBulkContactTitle] = useState('');
 
   // CSV state
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -86,12 +88,14 @@ export default function FindLeadsView() {
         })() : '';
         return {
           id: `lead-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          name: '', title: 'Decision Maker', company: r.name,
+          name: bulkContactName.trim() || '',
+          title: bulkContactTitle.trim() || 'Decision Maker',
+          company: r.name,
           email: '', phone: r.phone || '', website: r.website || '',
           domain, industry: (r.types || [])[0] || '', location: r.address || '',
           country: '', employeeCount: '', source: 'google_maps' as const,
           channel: 'email' as const, status: 'new' as const,
-          productId: selectedProduct || null, nextAction: 'enrich' as const,
+          productId: selectedProduct || null, nextAction: bulkContactName.trim() ? 'enrich' : 'add_name' as const,
           nextActionDate: new Date().toISOString(), emailSequenceStep: 0,
           linkedinStatus: 'none' as const, notes: `Found via Google Maps. Rating: ${r.rating}`,
           tags: ['google-maps'], createdAt: new Date().toISOString().split('T')[0],
@@ -102,6 +106,8 @@ export default function FindLeadsView() {
     setAddingToPipeline(false);
     setSelectedResults(new Set());
     setSearchResults([]);
+    setBulkContactName('');
+    setBulkContactTitle('');
   };
 
   // CSV handling
@@ -249,22 +255,41 @@ export default function FindLeadsView() {
           {/* Results */}
           {searchResults.length > 0 && (
             <div className="bg-[#141414] border border-[#1f1f1f] rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <div>
                   <h3 className="text-sm font-semibold text-white">{searchResults.length} results found</h3>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">Select companies to add to pipeline</p>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">Select companies and optionally set a contact name</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={() => setSelectedResults(new Set(searchResults.map((r) => r.place_id)))}
                     className="px-3 py-1 rounded-lg bg-[#0f0f0f] text-[10px] text-zinc-500 hover:text-white border border-[#2a2a2a] transition-colors">
                     Select All
                   </button>
+                </div>
+              </div>
+
+              {/* Bulk contact name + title */}
+              <div className="grid grid-cols-3 gap-3 mb-4 p-3 bg-amber-500/5 border border-amber-500/15 rounded-lg">
+                <div>
+                  <p className="text-[10px] font-bold text-amber-400 mb-1">Contact Name (applies to all)</p>
+                  <input value={bulkContactName} onChange={(e) => setBulkContactName(e.target.value)} placeholder='e.g. "Sarah Chen" (leave blank if different per company)'
+                    className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/40" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-amber-400 mb-1">Title / Role</p>
+                  <input value={bulkContactTitle} onChange={(e) => setBulkContactTitle(e.target.value)} placeholder='e.g. "CFO" or "VP Operations"'
+                    className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-amber-500/40" />
+                </div>
+                <div className="flex items-end">
                   <button onClick={addSelectedToPipeline} disabled={addingToPipeline || selectedResults.size === 0}
-                    className="px-4 py-1.5 rounded-lg bg-emerald-500 text-xs font-semibold text-black hover:bg-emerald-400 transition-colors disabled:opacity-50">
+                    className="w-full px-4 py-2 rounded-lg bg-emerald-500 text-xs font-semibold text-black hover:bg-emerald-400 transition-colors disabled:opacity-50">
                     {addingToPipeline ? '⏳ Adding...' : `+ Add ${selectedResults.size} to Pipeline`}
                   </button>
                 </div>
               </div>
+              {!bulkContactName && (
+                <p className="text-[9px] text-amber-400/70 mb-3 -mt-2">Tip: Set a contact name now so emails can be generated. You can also add names later in Enrich.</p>
+              )}
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {searchResults.map((result) => {
                   const isSelected = selectedResults.has(result.place_id);
