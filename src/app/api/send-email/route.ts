@@ -14,26 +14,39 @@ export async function POST(request: NextRequest) {
     const gmailUser = process.env.GMAIL_USER;
     const gmailAppPass = process.env.GMAIL_APP_PASSWORD;
 
-    // Try Resend first
+    // Try Resend with verified domain first, fallback to onboarding@resend.dev
     if (resendApiKey) {
       const resend = new Resend(resendApiKey);
-      const fromEmail = fromName ? `${fromName} <outreach@ariaagent.agency>` : 'ariaagent solutions <outreach@ariaagent.agency>';
+      const domainFrom = fromName ? `${fromName} <outreach@ariaagent.agency>` : 'ariaagent solutions <outreach@ariaagent.agency>';
+      const fallbackFrom = fromName ? `${fromName} <onboarding@resend.dev>` : 'ariaagent solutions <onboarding@resend.dev>';
 
-      const { data, error } = await resend.emails.send({
-        from: fromEmail,
+      // Try verified domain first
+      let result = await resend.emails.send({
+        from: domainFrom,
         to: [to],
         subject,
         html,
-        replyTo: replyTo || undefined,
+        replyTo: replyTo || 'aria.agentworks@gmail.com',
       });
 
-      if (error) {
-        return NextResponse.json({ success: false, error: error.message, provider: 'resend' }, { status: 500 });
+      // If domain not verified, fallback to onboarding@resend.dev
+      if (result.error && result.error.message?.includes('not verified')) {
+        result = await resend.emails.send({
+          from: fallbackFrom,
+          to: [to],
+          subject,
+          html,
+          replyTo: replyTo || 'aria.agentworks@gmail.com',
+        });
+      }
+
+      if (result.error) {
+        return NextResponse.json({ success: false, error: result.error.message, provider: 'resend' }, { status: 500 });
       }
 
       return NextResponse.json({
         success: true,
-        messageId: data?.id,
+        messageId: result.data?.id,
         provider: 'resend',
       });
     }
@@ -63,11 +76,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: false,
-      error: 'No email provider configured. Add RESEND_API_KEY or GMAIL_USER + GMAIL_APP_PASSWORD to .env.local',
-      setupGuide: {
-        resend: '1. Sign up at resend.com (free, 3000 emails/mo)  2. Create API key  3. Add RESEND_API_KEY=re_xxx to .env.local',
-        gmail: '1. Google "Gmail App Password"  2. Create one  3. Add GMAIL_USER=you@gmail.com + GMAIL_APP_PASSWORD=xxxx to .env.local',
-      },
+      error: 'No email provider configured.',
     }, { status: 400 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
