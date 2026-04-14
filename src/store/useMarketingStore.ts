@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { MarketingProject, Lead, SocialProfile } from '@/types/marketing';
 
 const GUMROAD_PRODUCTS: MarketingProject[] = [
@@ -33,14 +34,14 @@ const GUMROAD_PRODUCTS: MarketingProject[] = [
 ];
 
 const DEMO_LEADS: Lead[] = [
-  { id: 'l1', projectId: 'gp1', name: 'Sarah Chen', title: 'VP of Customer Operations', company: 'Acme Corp', domain: 'acmecorp.com', industry: 'SaaS', employeeCount: '500-1000', channel: 'linkedin', status: 'contacted', notes: 'Interested in support automation', createdAt: '2026-04-14' },
-  { id: 'l2', projectId: 'gp4', name: 'Michael Torres', title: 'CFO', company: 'FinEdge Systems', domain: 'finedge.io', industry: 'Fintech', employeeCount: '200-500', channel: 'linkedin', status: 'replied', notes: 'Asked for pricing details', createdAt: '2026-04-14' },
-  { id: 'l3', projectId: 'gp2', name: 'Dr. Priya Sharma', title: 'COO', company: 'HealthBridge', domain: 'healthbridge.com', industry: 'Healthcare', employeeCount: '1000-5000', channel: 'linkedin', status: 'new', notes: '', createdAt: '2026-04-14' },
-  { id: 'l4', projectId: 'gp1', name: 'James Wilson', title: 'Head of Support', company: 'NovaTech AI', domain: 'novatech.ai', industry: 'AI/ML', employeeCount: '100-200', channel: 'twitter', status: 'new', notes: '', createdAt: '2026-04-14' },
-  { id: 'l5', projectId: 'gp4', name: 'Elena Rodriguez', title: 'VP of Operations', company: 'RetailMax', domain: 'retailmax.com', industry: 'Retail', employeeCount: '2000-5000', channel: 'reddit', status: 'contacted', notes: 'Found via Reddit thread', createdAt: '2026-04-14' },
-  { id: 'l6', projectId: 'gp3', name: 'David Kim', title: 'CTO', company: 'ChatFlow Inc', domain: 'chatflow.io', industry: 'Conversational AI', employeeCount: '50-100', channel: 'producthunt', status: 'new', notes: '', createdAt: '2026-04-14' },
-  { id: 'l7', projectId: 'gp2', name: 'Lisa Chang', title: 'Director of Contact Center', company: 'TelcoGlobal', domain: 'telcoglobal.com', industry: 'Telecom', employeeCount: '5000+', channel: 'email', status: 'interested', notes: 'Wants voice AI demo', createdAt: '2026-04-13' },
-  { id: 'l8', projectId: 'gp1', name: 'Robert Patel', title: 'VP of CX', company: 'InsureTech Plus', domain: 'insuretechplus.com', industry: 'Insurance', employeeCount: '300-600', channel: 'discord', status: 'new', notes: '', createdAt: '2026-04-13' },
+  { id: 'l1', projectId: 'gp1', name: 'Sarah Chen', title: 'VP of Customer Operations', company: 'Acme Corp', domain: 'acmecorp.com', industry: 'SaaS', employeeCount: '500-1000', channel: 'linkedin', status: 'contacted', notes: 'Interested in support automation', createdAt: '2026-04-14', nextAction: 'followup1', nextActionDate: new Date(Date.now() + 1 * 86400000).toISOString(), lastContactedAt: '2026-04-14', messageHistory: [{ step: 'connection', sentAt: '2026-04-14T10:00:00Z', content: 'Connection request sent' }] },
+  { id: 'l2', projectId: 'gp4', name: 'Michael Torres', title: 'CFO', company: 'FinEdge Systems', domain: 'finedge.io', industry: 'Fintech', employeeCount: '200-500', channel: 'linkedin', status: 'replied', notes: 'Asked for pricing details', createdAt: '2026-04-14', nextAction: 'reply', nextActionDate: '2026-04-14T08:00:00Z', lastContactedAt: '2026-04-14', messageHistory: [{ step: 'connection', sentAt: '2026-04-13T09:00:00Z', content: 'Connection request sent' }, { step: 'followup1', sentAt: '2026-04-14T10:00:00Z', content: 'Follow-up sent' }] },
+  { id: 'l3', projectId: 'gp2', name: 'Dr. Priya Sharma', title: 'COO', company: 'HealthBridge', domain: 'healthbridge.com', industry: 'Healthcare', employeeCount: '1000-5000', channel: 'linkedin', status: 'new', notes: '', createdAt: '2026-04-14', nextAction: 'connect', nextActionDate: '2026-04-14T12:00:00Z' },
+  { id: 'l4', projectId: 'gp1', name: 'James Wilson', title: 'Head of Support', company: 'NovaTech AI', domain: 'novatech.ai', industry: 'AI/ML', employeeCount: '100-200', channel: 'twitter', status: 'new', notes: '', createdAt: '2026-04-14', nextAction: 'connect' },
+  { id: 'l5', projectId: 'gp4', name: 'Elena Rodriguez', title: 'VP of Operations', company: 'RetailMax', domain: 'retailmax.com', industry: 'Retail', employeeCount: '2000-5000', channel: 'reddit', status: 'contacted', notes: 'Found via Reddit thread', createdAt: '2026-04-14', nextAction: 'followup1', nextActionDate: new Date(Date.now() + 2 * 86400000).toISOString(), lastContactedAt: '2026-04-14' },
+  { id: 'l6', projectId: 'gp3', name: 'David Kim', title: 'CTO', company: 'ChatFlow Inc', domain: 'chatflow.io', industry: 'Conversational AI', employeeCount: '50-100', channel: 'producthunt', status: 'new', notes: '', createdAt: '2026-04-14', nextAction: 'connect' },
+  { id: 'l7', projectId: 'gp2', name: 'Lisa Chang', title: 'Director of Contact Center', company: 'TelcoGlobal', domain: 'telcoglobal.com', industry: 'Telecom', employeeCount: '5000+', channel: 'email', status: 'interested', notes: 'Wants voice AI demo', createdAt: '2026-04-13', nextAction: 'close', nextActionDate: new Date(Date.now() - 1 * 86400000).toISOString(), lastContactedAt: '2026-04-14', messageHistory: [{ step: 'connection', sentAt: '2026-04-13T09:00:00Z', content: 'Initial email sent' }, { step: 'followup1', sentAt: '2026-04-14T10:00:00Z', content: 'Follow-up sent with case study' }] },
+  { id: 'l8', projectId: 'gp1', name: 'Robert Patel', title: 'VP of CX', company: 'InsureTech Plus', domain: 'insuretechplus.com', industry: 'Insurance', employeeCount: '300-600', channel: 'discord', status: 'new', notes: '', createdAt: '2026-04-13', nextAction: 'connect' },
 ];
 
 const SOCIAL_PROFILES: SocialProfile[] = [
@@ -56,6 +57,8 @@ interface MarketingStore {
   activeProject: string | null;
   leads: Lead[];
   socialProfiles: SocialProfile[];
+  autoOutreachEnabled: boolean;
+  gumroadSales: Array<{ id: string; product_name: string; email: string; price: number; created_at: string }>;
   setView: (view: string) => void;
   setActiveProject: (id: string | null) => void;
   addProject: (project: MarketingProject) => void;
@@ -65,23 +68,42 @@ interface MarketingStore {
   deleteLead: (id: string) => void;
   getLeadsForProject: (projectId: string) => Lead[];
   getProject: (id: string) => MarketingProject | undefined;
+  toggleAutoOutreach: () => void;
+  setGumroadSales: (sales: Array<{ id: string; product_name: string; email: string; price: number; created_at: string }>) => void;
 }
 
-export const useMarketingStore = create<MarketingStore>((set, get) => ({
-  activeView: 'dashboard',
-  projects: GUMROAD_PRODUCTS,
-  activeProject: null,
-  leads: DEMO_LEADS,
-  socialProfiles: SOCIAL_PROFILES,
+export const useMarketingStore = create<MarketingStore>()(
+  persist(
+    (set, get) => ({
+      activeView: 'dashboard',
+      projects: GUMROAD_PRODUCTS,
+      activeProject: null,
+      leads: DEMO_LEADS,
+      socialProfiles: SOCIAL_PROFILES,
+      autoOutreachEnabled: false,
+      gumroadSales: [],
 
-  setView: (view) => set({ activeView: view }),
-  setActiveProject: (id) => set({ activeProject: id, activeView: 'outreach' }),
+      setView: (view) => set({ activeView: view }),
+      setActiveProject: (id) => set({ activeProject: id, activeView: 'outreach' }),
 
-  addProject: (project) => set((s) => ({ projects: [...s.projects, project] })),
-  updateProject: (id, updates) => set((s) => ({ projects: s.projects.map((p) => p.id === id ? { ...p, ...updates } : p) })),
-  addLead: (lead) => set((s) => ({ leads: [...s.leads, lead] })),
-  updateLead: (id, updates) => set((s) => ({ leads: s.leads.map((l) => l.id === id ? { ...l, ...updates } : l) })),
-  deleteLead: (id) => set((s) => ({ leads: s.leads.filter((l) => l.id !== id) })),
-  getLeadsForProject: (projectId) => get().leads.filter((l) => l.projectId === projectId),
-  getProject: (id) => get().projects.find((p) => p.id === id),
-}));
+      addProject: (project) => set((s) => ({ projects: [...s.projects, project] })),
+      updateProject: (id, updates) => set((s) => ({ projects: s.projects.map((p) => p.id === id ? { ...p, ...updates } : p) })),
+      addLead: (lead) => set((s) => ({ leads: [...s.leads, lead] })),
+      updateLead: (id, updates) => set((s) => ({ leads: s.leads.map((l) => l.id === id ? { ...l, ...updates } : l) })),
+      deleteLead: (id) => set((s) => ({ leads: s.leads.filter((l) => l.id !== id) })),
+      getLeadsForProject: (projectId) => get().leads.filter((l) => l.projectId === projectId),
+      getProject: (id) => get().projects.find((p) => p.id === id),
+      toggleAutoOutreach: () => set((s) => ({ autoOutreachEnabled: !s.autoOutreachEnabled })),
+      setGumroadSales: (sales) => set({ gumroadSales: sales }),
+    }),
+    {
+      name: 'ariaagent-marketing',
+      partialize: (state) => ({
+        leads: state.leads,
+        projects: state.projects,
+        autoOutreachEnabled: state.autoOutreachEnabled,
+        gumroadSales: state.gumroadSales,
+      }),
+    }
+  )
+);

@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useMarketingStore } from '@/store/useMarketingStore';
 import type { Lead } from '@/types/marketing';
+import { getLeadsNeedingAction, getTimeUntilNextAction, markActionComplete, generateAutoReply, ACTION_LABELS } from '@/lib/outreach-engine';
 
 const STATUS_CFG: Record<string, { label: string; color: string; bg: string }> = {
   new: { label: 'New', color: 'text-zinc-400', bg: 'bg-zinc-500/10 border-zinc-500/20' },
@@ -17,16 +18,42 @@ const CHANNEL_ICONS: Record<string, string> = { linkedin: '💼', twitter: '𝕏
 type MsgStep = 'connection' | 'followup1' | 'followup2';
 
 export default function OutreachView() {
-  const { projects, leads, addLead, updateLead, getLeadsForProject, getProject } = useMarketingStore();
+  const { projects, leads, addLead, updateLead, getLeadsForProject, getProject, autoOutreachEnabled, toggleAutoOutreach } = useMarketingStore();
   const [selectedProject, setSelectedProject] = useState(projects[0]?.id || '');
   const [generating, setGenerating] = useState(false);
   const [genMessages, setGenMessages] = useState<Record<string, { connectionRequest: string; followUp1: string; followUp2: string }>>({});
   const [activeMsg, setActiveMsg] = useState<MsgStep>('connection');
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', title: '', company: '', industry: '', domain: '', employees: '' });
+  const [sendingLeadId, setSendingLeadId] = useState<string | null>(null);
+  const [actionQueue, setActionQueue] = useState<ReturnType<typeof getLeadsNeedingAction> | null>(null);
+  const [showAutoReplies, setShowAutoReplies] = useState<Record<string, string>>({});
 
   const project = getProject(selectedProject);
   const projectLeads = getLeadsForProject(selectedProject);
+
+  // Recalculate action queue when leads or autoOutreach change
+  const refreshActionQueue = useCallback(() => {
+    if (autoOutreachEnabled) {
+      setActionQueue(getLeadsNeedingAction(projectLeads));
+    } else {
+      setActionQueue(null);
+    }
+  }, [projectLeads, autoOutreachEnabled]);
+
+  useEffect(() => {
+    refreshActionQueue();
+  }, [refreshActionQueue]);
+
+  // Auto-reply generation when lead status is replied/interested
+  useEffect(() => {
+    for (const lead of projectLeads) {
+      if ((lead.status === 'replied' || lead.status === 'interested') && lead.nextAction && !showAutoReplies[lead.id]) {
+        const reply = generateAutoReply(lead, project?.name);
+        setShowAutoReplies((prev) => ({ ...prev, [lead.id]: reply }));
+      }
+    }
+  }, [projectLeads, project, showAutoReplies]);
 
   const generateForLead = async (lead: Lead) => {
     if (!project) return;
@@ -45,7 +72,15 @@ export default function OutreachView() {
         const data = await res.json();
         if (data.success) {
           setGenMessages((p) => ({ ...p, [lead.id]: data.messages }));
-          updateLead(lead.id, { generatedMessages: data.messages, status: 'contacted' });
+          const history = lead.messageHistory || [];
+          updateLead(lead.id, {
+            generatedMessages: data.messages,
+            status: 'contacted',
+            lastContactedAt: new Date().toISOString(),
+            nextAction: 'followup1',
+            nextActionDate: new Date(Date.now() + 3 * 86400000).toISOString(),
+            messageHistory: [...history, { step: 'connection', sentAt: new Date().toISOString(), content: 'Connection request generated' }],
+          });
         }
       }
     } catch { /* fallback */ } finally { setGenerating(false); }
@@ -64,6 +99,7 @@ export default function OutreachView() {
       domain: addForm.domain || `${addForm.company.toLowerCase().replace(/\s/g, '')}.com`,
       industry: addForm.industry || 'Tech', employeeCount: addForm.employees || '200-500',
       channel: 'manual', status: 'new', notes: '', createdAt: new Date().toISOString().split('T')[0],
+      nextAction: 'connect', nextActionDate: new Date().toISOString(),
     });
     setAddForm({ name: '', title: '', company: '', industry: '', domain: '', employees: '' });
     setShowAdd(false);
@@ -80,8 +116,31 @@ export default function OutreachView() {
   const advanceStatus = (lead: Lead) => {
     const flow: Record<string, string> = { new: 'contacted', contacted: 'replied', replied: 'interested', interested: 'converted' };
     const next = flow[lead.status];
-    if (next) updateLead(lead.id, { status: next as Lead['status'] });
+    if (next) {
+      const history = lead.messageHistory || [];
+      updateLead(lead.id, { status: next as Lead['status'], messageHistory: [...history, { step: 'status_change', sentAt: new Date().toISOString(), content: `Status changed to ${next}` }] });
+    }
   };
+
+  const markAsSent = (lead: Lead) => {
+    setSendingLeadId(lead.id);
+    const updates = markActionComplete(lead);
+    updateLead(lead.id, updates);
+    setTimeout(() => {
+      setSendingLeadId(null);
+    }, 500);
+  };
+
+  const sendAllPending = () => {
+    if (!actionQueue) return;
+    const overdue = actionQueue.overdue;
+    for (const lead of overdue) {
+      const updates = markActionComplete(lead);
+      updateLead(lead.id, updates);
+    }
+  };
+
+  const overdueCount = actionQueue?.overdue.length || 0;
 
   return (
     <div className="space-y-5 max-w-6xl">
@@ -91,6 +150,15 @@ export default function OutreachView() {
           <p className="text-xs text-zinc-500 mt-1">AI-powered lead generation and personalized messaging.</p>
         </div>
         <div className="flex gap-2">
+          {/* Automation Toggle */}
+          <button onClick={toggleAutoOutreach}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+              autoOutreachEnabled
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                : 'bg-[#1a1a1a] text-zinc-500 border-[#2a2a2a] hover:text-zinc-300'
+            }`}>
+            {autoOutreachEnabled ? '🤖 Auto: ON' : '🤖 Auto: OFF'}
+          </button>
           <button onClick={() => setShowAdd(true)} className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] text-[11px] font-medium text-zinc-400 hover:text-white border border-[#2a2a2a] transition-colors">+ Add Lead</button>
           {project && <a href={project.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-emerald-500 text-[11px] font-semibold text-black hover:bg-emerald-400 transition-colors">🔗 Copy Product Link</a>}
         </div>
@@ -123,6 +191,69 @@ export default function OutreachView() {
         </div>
       )}
 
+      {/* Action Queue (Automation ON) */}
+      {autoOutreachEnabled && actionQueue && (
+        <div className="bg-[#141414] border border-emerald-500/20 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🤖</span>
+              <h3 className="text-sm font-semibold text-white">Action Queue</h3>
+              {overdueCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-bold text-red-400">
+                  {overdueCount} overdue
+                </span>
+              )}
+            </div>
+            {overdueCount > 0 && (
+              <button onClick={sendAllPending}
+                className="px-3 py-1.5 rounded-lg bg-emerald-500 text-[10px] font-semibold text-black hover:bg-emerald-400 transition-colors">
+                ✓ Send All Pending ({overdueCount})
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 mb-3">
+            {[
+              { label: 'Connect', count: actionQueue.needsConnection.length, icon: '📤' },
+              { label: 'Follow-up', count: actionQueue.needsFollowUp.length, icon: '📨' },
+              { label: 'Reply', count: actionQueue.needsReply.length, icon: '💬' },
+              { label: 'Close', count: actionQueue.needsClose.length, icon: '💰' },
+            ].map((item) => (
+              <div key={item.label} className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-2 text-center">
+                <span className="text-xs">{item.icon}</span>
+                <p className="text-sm font-bold text-white">{item.count}</p>
+                <p className="text-[9px] text-zinc-600">{item.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Overdue leads mini-list */}
+          {actionQueue.overdue.length > 0 && (
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              {actionQueue.overdue.slice(0, 5).map((lead) => (
+                <div key={lead.id} className="flex items-center justify-between bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs">{CHANNEL_ICONS[lead.channel]}</span>
+                    <p className="text-[11px] text-white truncate">{lead.name}</p>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${STATUS_CFG[lead.status]?.bg || ''} ${STATUS_CFG[lead.status]?.color || ''}`}>{STATUS_CFG[lead.status]?.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[9px] text-red-400">{getTimeUntilNextAction(lead)}</span>
+                    <button onClick={() => markAsSent(lead)} disabled={sendingLeadId === lead.id}
+                      className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-semibold text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50">
+                      {sendingLeadId === lead.id ? '✓' : 'Mark Sent'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {actionQueue.overdue.length > 5 && (
+                <p className="text-[10px] text-zinc-600 text-center pt-1">+{actionQueue.overdue.length - 5} more</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Actions */}
       {projectLeads.length > 0 && (
         <div className="flex items-center gap-3">
@@ -146,8 +277,12 @@ export default function OutreachView() {
           projectLeads.map((lead) => {
             const sc = STATUS_CFG[lead.status];
             const hasMsg = !!genMessages[lead.id];
+            const isOverdue = lead.nextActionDate && new Date(lead.nextActionDate) <= new Date();
+            const timeUntil = getTimeUntilNextAction(lead);
+            const autoReply = showAutoReplies[lead.id];
+
             return (
-              <div key={lead.id} className="bg-[#141414] border border-[#1f1f1f] rounded-xl overflow-hidden">
+              <div key={lead.id} className={`bg-[#141414] border rounded-xl overflow-hidden ${isOverdue ? 'border-red-500/30' : 'border-[#1f1f1f]'}`}>
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3 min-w-0">
@@ -160,10 +295,40 @@ export default function OutreachView() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      {autoOutreachEnabled && lead.nextAction && (
+                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${isOverdue ? 'bg-red-500/10 text-red-400' : 'bg-zinc-800 text-zinc-500'}`}>
+                          {isOverdue ? '⏰ ' : '⏳ '}{timeUntil}
+                        </span>
+                      )}
                       <span className="text-[10px]">{CHANNEL_ICONS[lead.channel]}</span>
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${sc?.bg || ''} ${sc?.color || ''}`}>{sc?.label}</span>
                     </div>
                   </div>
+
+                  {/* Automation: Next Action Label */}
+                  {autoOutreachEnabled && lead.nextAction && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] text-zinc-600">Next:</span>
+                      <span className="text-[10px] font-medium text-amber-400">{ACTION_LABELS[lead.nextAction]}</span>
+                      {lead.messageHistory && lead.messageHistory.length > 0 && (
+                        <span className="text-[9px] text-zinc-700">({lead.messageHistory.length} messages)</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Auto-reply preview for replied/interested leads */}
+                  {autoReply && (lead.status === 'replied' || lead.status === 'interested') && (
+                    <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-lg p-3 mb-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold text-emerald-400">🤖 AI Suggested Reply</span>
+                      </div>
+                      <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap">{autoReply}</p>
+                      <div className="flex justify-end mt-2 gap-2">
+                        <button onClick={() => copy(autoReply)} className="text-[10px] text-zinc-500 hover:text-white font-medium">📋 Copy</button>
+                        <button onClick={() => { copy(autoReply); markAsSent(lead); }} className="text-[10px] text-emerald-400 hover:text-emerald-300 font-medium">✓ Copy & Mark Sent</button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Message Tabs */}
                   <div className="flex gap-1 mb-2">
@@ -179,8 +344,9 @@ export default function OutreachView() {
                   {hasMsg ? (
                     <div className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-lg p-3 mb-2">
                       <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap">{getMsg(lead.id, activeMsg)}</p>
-                      <div className="flex justify-end mt-2">
-                        <button onClick={() => copy(getMsg(lead.id, activeMsg))} className="text-[10px] text-emerald-400 hover:text-emerald-300 font-medium">📋 Copy</button>
+                      <div className="flex justify-end mt-2 gap-3">
+                        <button onClick={() => { copy(getMsg(lead.id, activeMsg)); markAsSent(lead); }} className="text-[10px] text-emerald-400 hover:text-emerald-300 font-medium">✓ Mark as Sent</button>
+                        <button onClick={() => copy(getMsg(lead.id, activeMsg))} className="text-[10px] text-zinc-500 hover:text-white font-medium">📋 Copy</button>
                       </div>
                     </div>
                   ) : (
@@ -196,6 +362,12 @@ export default function OutreachView() {
                       className="flex-1 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-30">
                       {lead.status === 'converted' ? '💰 Converted!' : lead.status === 'interested' ? '🎉 Mark Converted' : '→ Next Step'}
                     </button>
+                    {autoOutreachEnabled && lead.nextAction && isOverdue && (
+                      <button onClick={() => markAsSent(lead)} disabled={sendingLeadId === lead.id}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[10px] font-semibold text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50">
+                        ✓ Mark Sent
+                      </button>
+                    )}
                     {project && (
                       <button onClick={() => copy(project.url)} className="px-3 py-1.5 rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] text-[10px] text-zinc-500 hover:text-white transition-colors">📋 Link</button>
                     )}

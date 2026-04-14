@@ -1,5 +1,7 @@
 'use client';
+import { useMemo } from 'react';
 import { useMarketingStore } from '@/store/useMarketingStore';
+import { getLeadsNeedingAction } from '@/lib/outreach-engine';
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -11,7 +13,14 @@ const navItems = [
 ];
 
 export default function Sidebar() {
-  const { activeView, setView, socialProfiles } = useMarketingStore();
+  const { activeView, setView, socialProfiles, leads, autoOutreachEnabled } = useMarketingStore();
+
+  // Calculate pending actions count
+  const overdueCount = useMemo(() => {
+    if (!autoOutreachEnabled) return 0;
+    const queue = getLeadsNeedingAction(leads);
+    return queue.overdue.length;
+  }, [leads, autoOutreachEnabled]);
 
   return (
     <aside className="w-56 shrink-0 bg-[#111111] border-r border-[#1a1a1a] flex flex-col h-screen sticky top-0">
@@ -30,20 +39,36 @@ export default function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-1">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setView(item.id)}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-              activeView === item.id
-                ? 'bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500'
-                : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#1a1a1a]'
-            }`}
-          >
-            <span className="text-sm">{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const showBadge = item.id === 'outreach' && overdueCount > 0;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setView(item.id)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                activeView === item.id
+                  ? 'bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#1a1a1a]'
+              }`}
+            >
+              <span className="text-sm">{item.icon}</span>
+              {item.label}
+              {showBadge && (
+                <span className="ml-auto px-1.5 py-0.5 rounded-full bg-red-500/20 text-[9px] font-bold text-red-400">
+                  {overdueCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+
+        {/* Automation Status */}
+        {autoOutreachEnabled && (
+          <div className="flex items-center gap-2 px-3 py-2 mt-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[10px] text-emerald-500 font-medium">Auto-Outreach Active</span>
+          </div>
+        )}
 
         {/* Divider */}
         <div className="pt-3 pb-1">

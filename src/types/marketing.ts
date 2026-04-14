@@ -13,6 +13,15 @@ export interface MarketingProject {
   createdAt: string;
 }
 
+export type LeadStatus = 'new' | 'contacted' | 'replied' | 'interested' | 'converted' | 'lost';
+export type LeadAction = 'connect' | 'followup1' | 'followup2' | 'close' | 'reply';
+
+export interface MessageHistoryEntry {
+  step: string;
+  sentAt: string;
+  content: string;
+}
+
 export interface Lead {
   id: string;
   projectId: string;
@@ -23,10 +32,15 @@ export interface Lead {
   industry: string;
   employeeCount: string;
   channel: 'linkedin' | 'twitter' | 'reddit' | 'email' | 'manual';
-  status: 'new' | 'contacted' | 'replied' | 'interested' | 'converted' | 'lost';
+  status: LeadStatus;
   generatedMessages?: { connectionRequest?: string; followUp1?: string; followUp2?: string };
   notes: string;
   createdAt: string;
+  // Automation fields
+  nextAction?: LeadAction;
+  nextActionDate?: string;
+  lastContactedAt?: string;
+  messageHistory?: MessageHistoryEntry[];
 }
 
 export interface SocialProfile {

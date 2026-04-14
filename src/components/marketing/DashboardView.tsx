@@ -1,5 +1,7 @@
 'use client';
+import { useMemo } from 'react';
 import { useMarketingStore } from '@/store/useMarketingStore';
+import { getLeadsNeedingAction } from '@/lib/outreach-engine';
 
 const CHANNEL_COLORS: Record<string, { icon: string; color: string; bg: string }> = {
   linkedin: { icon: '💼', color: 'text-blue-400', bg: 'bg-blue-400/10' },
@@ -11,7 +13,7 @@ const CHANNEL_COLORS: Record<string, { icon: string; color: string; bg: string }
 };
 
 export default function DashboardView() {
-  const { projects, leads, socialProfiles } = useMarketingStore();
+  const { projects, leads, socialProfiles, autoOutreachEnabled, setView } = useMarketingStore();
 
   const totalLeads = leads.length;
   const totalMessages = projects.reduce((s, p) => s + p.stats.messagesSent, 0);
@@ -19,6 +21,14 @@ export default function DashboardView() {
   const totalRevenue = projects.reduce((s, p) => s + p.stats.revenue, 0);
   const activeProjects = projects.filter((p) => p.status === 'active').length;
   const converted = leads.filter((l) => l.status === 'converted').length;
+
+  // Automation metrics
+  const actionQueue = useMemo(() => {
+    if (!autoOutreachEnabled) return null;
+    return getLeadsNeedingAction(leads);
+  }, [leads, autoOutreachEnabled]);
+
+  const overdueCount = actionQueue?.overdue.length || 0;
 
   const statusCounts = {
     new: leads.filter((l) => l.status === 'new').length,
@@ -40,10 +50,46 @@ export default function DashboardView() {
   return (
     <div className="space-y-6 max-w-6xl">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-white">Dashboard</h1>
-        <p className="text-xs text-zinc-500 mt-1">Your marketing command center. Track all projects, leads, and revenue.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-white">Dashboard</h1>
+          <p className="text-xs text-zinc-500 mt-1">Your marketing command center. Track all projects, leads, and revenue.</p>
+        </div>
+        {/* Revenue Sync Quick Button */}
+        <button onClick={() => setView('revenue')}
+          className="px-3 py-1.5 rounded-lg bg-[#1a1a1a] text-[11px] font-medium text-zinc-400 hover:text-white border border-[#2a2a2a] transition-colors">
+          🔄 Sync Revenue
+        </button>
       </div>
+
+      {/* Automation Alert */}
+      {autoOutreachEnabled && overdueCount > 0 && (
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-lg">🔔</span>
+            <div>
+              <p className="text-sm font-semibold text-amber-400">
+                {overdueCount} lead{overdueCount !== 1 ? 's' : ''} need{overdueCount === 1 ? 's' : ''} follow-up
+              </p>
+              <p className="text-[11px] text-zinc-500">
+                {actionQueue?.needsConnection.length || 0} to connect · {actionQueue?.needsFollowUp.length || 0} follow-ups · {actionQueue?.needsClose.length || 0} to close
+              </p>
+            </div>
+          </div>
+          <button onClick={() => setView('outreach')}
+            className="px-4 py-2 rounded-lg bg-amber-500 text-xs font-semibold text-black hover:bg-amber-400 transition-colors">
+            Go to Outreach →
+          </button>
+        </div>
+      )}
+
+      {/* Automation Status Indicator */}
+      {autoOutreachEnabled && overdueCount === 0 && (
+        <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 flex items-center gap-3">
+          <span className="text-lg">✅</span>
+          <p className="text-sm text-emerald-400">All caught up! No pending actions right now.</p>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-5 gap-3">
