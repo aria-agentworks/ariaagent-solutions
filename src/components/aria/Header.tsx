@@ -4,6 +4,7 @@ import { formatCurrency } from '@/lib/panic-utils';
 
 const tabs = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'outreach', label: '🔗 Outreach' },
   { id: 'threads', label: 'Find Thread' },
   { id: 'generate', label: 'Generate Guide' },
   { id: 'products', label: 'My Products' },

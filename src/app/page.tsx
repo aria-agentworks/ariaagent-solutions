@@ -8,6 +8,7 @@ import ThreadFinder from '@/components/aria/ThreadFinder';
 import GuideGenerator from '@/components/aria/GuideGenerator';
 import ProductManager from '@/components/aria/ProductManager';
 import DistributionPlanner from '@/components/aria/DistributionPlanner';
+import OutreachAgent from '@/components/aria/OutreachAgent';
 import RevenueTracker from '@/components/aria/RevenueTracker';
 
 export default function Home() {
@@ -16,6 +17,7 @@ export default function Home() {
   const renderTab = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard />;
+      case 'outreach': return <OutreachAgent />;
       case 'threads': return <ThreadFinder />;
       case 'generate': return <GuideGenerator />;
       case 'products': return <ProductManager />;
