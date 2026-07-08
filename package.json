@@ -1,9 +1,25 @@
 {
   "name": "ariaagent-solutions",
   "version": "0.2.0",
-  "private": true,
+  "private": false,
   "description": "AI workflow automation stack for generating, deploying, and monitoring ad campaigns.",
   "license": "MIT",
+  "homepage": "https://github.com/aria-agentworks/ariaagent-solutions",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aria-agentworks/ariaagent-solutions.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aria-agentworks/ariaagent-solutions/issues"
+  },
+  "keywords": [
+    "ai-agents",
+    "workflow-automation",
+    "ad-ops",
+    "marketing-automation",
+    "nextjs",
+    "operator-dashboard"
+  ],
   "scripts": {
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && node scripts/postbuild-copy.mjs",

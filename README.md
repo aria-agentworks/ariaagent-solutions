@@ -10,6 +10,16 @@ It combines:
 - `bob/` as the orchestration layer
 - `src/` as the operator dashboard
 
+## Project status
+
+This repository is actively maintained as the public home for the Aria Agentworks ad-ops workflow stack.
+
+- Current focus: stabilize the operator dashboard and the end-to-end Brain -> Hands -> Mouth pipeline
+- Good first contributions: docs cleanup, environment validation, dashboard UX polish, pipeline observability
+- Maintainer docs: [MAINTAINERS.md](MAINTAINERS.md)
+- Roadmap: [ROADMAP.md](ROADMAP.md)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+
 ## What this repo is for
 
 This project is aimed at teams building repeatable ad-operations workflows with AI assistance instead of disconnected scripts and manual handoffs.
@@ -134,6 +144,9 @@ Please read:
 - [CONTRIBUTING.md](CONTRIBUTING.md)
 - [SECURITY.md](SECURITY.md)
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- [MAINTAINERS.md](MAINTAINERS.md)
+- [ROADMAP.md](ROADMAP.md)
+- [CHANGELOG.md](CHANGELOG.md)
 
 ## License
 
