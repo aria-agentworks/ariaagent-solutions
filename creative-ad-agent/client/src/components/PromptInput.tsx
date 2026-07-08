@@ -39,7 +39,7 @@ export function PromptInput() {
         <div className="flex items-center justify-between px-3 py-2 border-b border-border">
           <div className="flex items-center gap-1.5">
             <span className="text-accent text-[10px] md:text-xs font-bold tracking-wider">INPUT</span>
-            <span className="text-text-muted text-[10px] hidden sm:inline">//</span>
+            <span className="text-text-muted text-[10px] hidden sm:inline">{'//'}</span>
             <span className="text-text-muted text-[10px] tracking-wide hidden sm:inline">DIRECTIVE</span>
           </div>
           <div className="flex items-center gap-2">

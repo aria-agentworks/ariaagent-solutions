@@ -25,6 +25,7 @@ venv/
 .env.local
 .env.*.local
 bob/.env
+!.env.example
 
 # Bob runtime data (regenerated each run)
 bob/data/concepts.json
@@ -52,6 +53,7 @@ db/
 # Misc
 *.log
 *.tmp
+*.tsbuildinfo
 .turbo/
 .vercel/
 .vercel

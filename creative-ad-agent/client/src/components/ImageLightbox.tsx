@@ -67,7 +67,7 @@ export function ImageLightbox({ image, onClose }: ImageLightboxProps) {
           <div className="border-mechanical bg-surface p-4">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-accent text-xs font-bold tracking-wider">DETAILS</span>
-              <span className="text-text-muted text-xs">//</span>
+              <span className="text-text-muted text-xs">{'//'}</span>
               <span className="text-text-muted text-xs tracking-wide">METADATA</span>
             </div>
 

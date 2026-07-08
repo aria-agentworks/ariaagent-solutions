@@ -66,6 +66,7 @@ export function useWebSocket(): UseWebSocketReturn {
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const connectRef = useRef<() => void>(() => {});
   const sessionIdRef = useRef<string | null>(null);
   const lastEventIdRef = useRef<number>(0);
 
@@ -275,7 +276,7 @@ export function useWebSocket(): UseWebSocketReturn {
           console.log(`WebSocket: Reconnecting (attempt ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})`);
 
           reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
+            connectRef.current();
           }, RECONNECT_DELAY * reconnectAttemptsRef.current);
         } else if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
           console.error('WebSocket: Max reconnection attempts reached');
@@ -291,7 +292,11 @@ export function useWebSocket(): UseWebSocketReturn {
       console.error('WebSocket: Failed to create connection', error);
       setConnectionState('disconnected');
     }
-  }, [handleMessage, sendMessage]);
+  }, [handleMessage, sendMessage, startGeneration, addTerminalLine]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   // Disconnect
   const disconnect = useCallback(() => {

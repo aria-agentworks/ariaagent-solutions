@@ -32,7 +32,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
-export default {
+const worker = {
   async fetch(
     request: Request,
     env: Env,
@@ -126,3 +126,5 @@ export default {
     }
   },
 };
+
+export default worker;
